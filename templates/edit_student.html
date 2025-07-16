@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Student</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+    <h2>Edit Student - {{ student['name'] }}</h2>
+    <form method="POST">
+       
+        <label>Name:</label>
+        <input type="text" name="name" value="{{ student['name'] }}" required><br><br>
+
+        <label>Email:</label>
+        <input type="email" name="email" value="{{ student['email'] }}" required><br><br>
+
+        <label>Course:</label>
+        <input type="text" name="course" value="{{ student['course'] }}" required><br><br>
+
+        <label>Enrollment Date:</label>
+        <input type="date" name="enrollment_date" value="{{ student['enrollment_date'] }}" required><br><br>
+
+        <button type="submit">Update</button>
+    </form>
+    <a href="{{ url_for('view_students') }}">← Back to Student List</a>
+</body>
+</html>

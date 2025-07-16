@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter internal marks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container fade-in">
+        <h2>📘 Enter internal marks</h2>
+        <form method="POST">
+           
+            <div class="form-group">
+                <label>Select Student:</label>
+                <select name="student_id" class="form-control" required>
+                    {% for student in students %}
+                        <option value="{{ student.student_id }}">{{ student.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if error %}
+                <p style="color: red;">{{ error }}</p>
+            {% endif %}
+
+            {% for i in range(1, 6) %}
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label>Subject {{ i }}:</label>
+                    <input type="text" class="form-control" name="subject_{{ i }}">
+                </div>
+                <div class="form-group col-md-6">
+                    <label>internal marks :</label>
+                    <input type="text" class="form-control" name="grade_{{ i }}">
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary">Submit Grades</button>
+        </form>
+
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">⬅ Back to Dashboard</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inbox</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container fade-in">
+    <h2>📥 Inbox</h2>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>From</th>
+                <th>Message</th>
+                <th>Received At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for msg in messages %}
+            <tr>
+                <td>{{ msg.sender }}</td>
+                <td>{{ msg.message }}</td>
+                <td>{{ msg.timestamp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">⬅️ Back to Dashboard</a>
+</div>
+</body>
+</html>

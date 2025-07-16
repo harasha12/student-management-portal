@@ -1,0 +1,251 @@
+body {
+    margin: 0;
+    padding: 0;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: url('college_bg.jpg') no-repeat center center fixed;
+    background-size: cover;
+    
+}
+
+/* Container with light blur and subtle shadow */
+.container, .card, .login-box {
+    width: 90%;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.25); /* Slightly frosted white */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    backdrop-filter: blur(4px); /* Subtle blur behind the box */
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    animation: fadeIn 0.8s ease-in-out;
+    color: black;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.container:hover, .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 28px;
+    color: #222;
+}
+
+.emoji {
+    font-size: 32px;
+    vertical-align: middle;
+    margin-right: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    background-color: whitesmoke;
+    color: black;
+}
+
+table th {
+    background-color: #2c3e50;
+    color: white;
+}
+
+table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    box-shadow: 0 0 5px #007bff;
+    border: 1px solid #007bff;
+    transition: 0.2s ease;
+}
+
+.login-box button {
+    width: 100%;
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease-in-out;
+    letter-spacing: 0.5px;
+}
+
+.login-box button:hover {
+    background: linear-gradient(135deg, #2575fc, #6a11cb);
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+
+input, select, textarea {
+    padding: 10px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+}
+
+label {
+    color: #000;
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.error {
+    color: red;
+}
+
+.success {
+    color: green;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+/* Page Fade animation on load */
+@keyframes pageFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Responsive for mobile */
+@media (max-width: 600px) {
+    .container, .card, .login-box {
+        width: 95%;
+        padding: 20px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    @keyframes pageFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.page-fade-in {
+    animation: pageFade 1s ease-in;
+}
+
+@keyframes pageFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.login-page {
+    animation: pageFade 1s ease-in;
+}
+
+
+    .login-box input,
+    .login-box button {
+        font-size: 16px;
+    }
+}
+.login-logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-logo img {
+    width: 120px;
+    height: auto;
+    background: white;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.login-logo img:hover {
+    transform: scale(1.05);
+}
+
+.logo-wrapper {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Glass-like circular background */
+.logo-glass-bg {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.3),
+        0 0 0 2px rgba(255, 255, 255, 0.1);
+    z-index: 1;
+}
+
+/* The logo image */
+.logo-image {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    z-index: 2;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Hover zoom + subtle glow */
+.logo-image:hover {
+    transform: scale(1.07);
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+}
+
+/* Fade effect only for login page */
+.page-fade-in {
+    animation: pageFade 1s ease-in;
+}
+
+@keyframes pageFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

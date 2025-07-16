@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Attendance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #444;
+            text-align: center;
+        }
+        th {
+            background-color: #eee;
+        }
+        .print-button {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center;">📅 Attendance Records</h2>
+<!-- 🖨️ Print Button -->
+<div class="print-button">
+    <button onclick="window.print()" class="btn btn-primary">🖨️ Print Attendance</button>
+</div>
+{% if session['role'] == 'teacher' %}
+<div class="text-center mt-3">
+    <a href="{{ url_for('download_attendance_pdf') }}" class="btn btn-success">📥 Download PDF</a>
+</div>
+{% endif %}
+
+<!-- 📅 Attendance Table -->
+<table>
+    <tr>
+        <th>Student ID</th>
+        <th>Date</th>
+        <th>Status</th>
+    </tr>
+    {% for record in records %}
+    <tr>
+        <td>{{ record['student_id'] }}</td>
+        <td>{{ record['date'] }}</td>
+        <td>
+  P1: {{ record['period1'] or '-' }} |
+  P2: {{ record['period2'] or '-' }} |
+  P3: {{ record['period3'] or '-' }} |
+  P4: {{ record['period4'] or '-' }} |
+  P5: {{ record['period5'] or '-' }} |
+  P6: {{ record['period6'] or '-' }}
+</td>
+
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- ✅ Summary Section -->
+<h3 class="mt-5 text-center">📊 Attendance Summary</h3>
+<div class="d-flex justify-content-center mt-3">
+    <div class="card text-white shadow-lg" style="width: 300px; background-color: #444;">  <!-- Violet -->
+        <div class="card-header text-center fs-5 fw-bold" style="background-color: #6A1B9A;">
+            Attendance Summary
+        </div>
+        <div class="card-body text-center">
+            <p class="card-text fs-5 mb-2"><strong>Total Present:</strong> {{ total_present }}</p>
+            <p class="card-text fs-5"><strong>Total Absent:</strong> {{ total_absent }}</p>
+        </div>
+    </div>
+</div>
+
+</div>
+
+
+<!-- Back to Dashboard -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">⬅️ Back to Dashboard</a>
+</div>
+
+
+    
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Management Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<body class="page-fade-in login-page bg-light">
+
+  <!-- Page Center -->
+  <div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="text-center">
+
+      <!-- ✅ Logo Section -->
+      <div class="logo-wrapper">
+        <div class="logo-blur-bg"></div>
+        <img src="{{ url_for('static', filename='college_logo.jpg') }}" alt="college logo" class="logo-image">
+      </div>
+
+      <h2 class="mb-4">Welcome to Sir C R R Attendance Portal</h2>
+      <a href="{{ url_for('teacher_login') }}" class="btn btn-primary btn-lg m-2">Faculty Login</a>
+      <a href="{{ url_for('student_login') }}" class="btn btn-success btn-lg m-2">Student Login</a>
+    </div>
+  </div>
+
+</body>
+</html>

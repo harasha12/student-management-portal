@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Add Student - Student Management System</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="container fade-in">
+        <div class="container shadow p-4 rounded bg-white">
+            <h2 class="mb-4">Add Student</h2>
+            <form method="POST">
+                
+
+    <!-- Student ID -->
+    <div class="mb-3">
+    <label for="student_id" class="form-label">🎓 Student ID:</label>
+    <input type="text" class="form-control" name="student_id" id="student_id"
+           pattern="[A-Za-z0-9]{1,10}" maxlength="10" required
+           title="Only letters and numbers allowed, max 10 characters">
+</div>
+
+
+    <!-- Name -->
+    <div class="form-group">
+        <label for="name">Name:</label>
+        <input type="text" class="form-control" name="name" id="name" required>
+    </div>
+
+    <!-- Email -->
+    <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" class="form-control" name="email" id="email" required>
+    </div>
+
+    <!-- Course -->
+    <div class="form-group">
+        <label for="course">Course:</label>
+        <select class="form-control" name="course" id="course" required>
+            <option value="" disabled selected>-- Select Course --</option>
+            <option value="B.Tech - CSE">B.Tech - CSE</option>
+            <option value="B.Tech - AI&ML">B.Tech - AI&ML</option>
+            <option value="B.Tech - AI&DS">B.Tech - AI&DS</option>
+            <option value="B.Tech - CYBER SECURITY">B.Tech - CYBER SECURITY</option>
+            <option value="B.Tech - ECE">B.Tech - ECE</option>
+            <option value="B.Tech - EEE">B.Tech - EEE</option>
+            <option value="B.Tech - Mechanical">B.Tech - Mechanical</option>
+            <option value="B.Tech - Civil">B.Tech - Civil</option>
+            <option value="B.Tech - IT">B.Tech - IT</option>
+            <option value="B.Tech - NAME">B.Tech - NAME</option>
+            
+        </select>
+    </div>
+
+    <!-- Date -->
+    <div class="form-group">
+        <label for="date">Enrollment Date:</label>
+        <input type="date" class="form-control" name="date" id="date" required>
+    </div>
+    
+
+    <!-- Buttons -->
+    <button type="submit" class="btn btn-primary">💾 Save</button>
+    
+
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const studentIdInput = document.getElementById('student_id');
+    studentIdInput.addEventListener('input', function () {
+        // Keep only letters and numbers, max 10 characters
+        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+    });
+});
+</script>
+
+
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">⬅️ Back to Dashboard</a>
+        </div>
+    </div>
+
+</body>
+</html>

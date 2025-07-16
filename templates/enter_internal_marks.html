@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter internal marks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+    <h2>Enter internal marks</h2>
+    <form method="POST">
+       
+    <label for="student_id">Student ID:</label>
+    <select id="student_id" name="student_id" onchange="fillStudentName()" required>
+        <option value="">Select ID</option>
+        {% for student in students %}
+        <option value="{{ student['id'] }}" data-name="{{ student['name'] }}">{{ student['id'] }}</option>
+        {% endfor %}
+    </select><br>
+
+    <label for="student_name">Student Name:</label>
+    <input type="text" id="student_name" name="student_name" readonly><br>
+
+    <label for="subject">Subject:</label>
+    <input type="text" name="subject" required><br>
+
+    <label for="grade">Grade:</label>
+    <input type="text" name="grade" required><br>
+
+    <input type="submit" value="Submit">
+</form>
+
+<script>
+    function fillStudentName() {
+        const select = document.getElementById('student_id');
+        const selectedOption = select.options[select.selectedIndex];
+        const name = selectedOption.getAttribute('data-name');
+        document.getElementById('student_name').value = name;
+    }
+</script>
+
+    <br>
+    <a href="/"><button>Back to Dashboard</button></a>
+</body>
+</html>
