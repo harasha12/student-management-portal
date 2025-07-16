@@ -1,4 +1,15 @@
 Flask
+Flask-Mail==0.10.0
 Flask-WTF
+fpdf==1.7.2
 email-validator
+WTForms==3.2.1
+Jinja2==3.1.6
 gunicorn
+itsdangerous==2.2.0
+Werkzeug==2.3.7
+numpy==1.26.4
+scapy==2.6.1
+colorama==0.4.6
+click==8.1.7
+blinker==1.9.0
