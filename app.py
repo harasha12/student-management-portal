@@ -711,42 +711,63 @@ def enter_grade():
 
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
 def view_internal_marks():
+    if 'user' not in session:
+        return redirect(url_for('choose_login'))
+
     db = get_db()
+    role = session.get('role')
+    user_id = session['user']
 
-    if request.method == 'POST':
-        student_id = request.form.get('student_id')
-        subject = request.form.get('subject')
-
-        query = '''
-            SELECT im.student_id, s.name AS student_name, im.subject, im.internal_marks
+    if role == 'student':
+        # Show only logged-in student's internal marks
+        records = db.execute('''
+            SELECT im.student_id, s.name AS student_name, im.subject, im.marks
             FROM internal_marks im
             JOIN students s ON im.student_id = s.student_id
-        '''
-        filters = []
-        params = []
+            WHERE im.student_id = ?
+        ''', (user_id,)).fetchall()
 
-        if student_id:
-            filters.append('im.student_id = ?')
-            params.append(student_id)
-        if subject:
-            filters.append('im.subject LIKE ?')
-            params.append(f'%{subject}%')
+        return render_template('view_internal_marks.html', records=records)
 
-        if filters:
-            query += ' WHERE ' + ' AND '.join(filters)
+    elif role == 'teacher':
+        # Show filter form and all students' marks
+        if request.method == 'POST':
+            student_id = request.form.get('student_id')
+            subject = request.form.get('subject')
 
-        records = db.execute(query, params).fetchall()
+            query = '''
+                SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+                FROM internal_marks im
+                JOIN students s ON im.student_id = s.student_id
+                WHERE s.added_by = ?
+            '''
+            filters = []
+            params = [user_id]  # teacher who added students
+
+            if student_id:
+                filters.append('im.student_id = ?')
+                params.append(student_id)
+            if subject:
+                filters.append('im.subject LIKE ?')
+                params.append(f'%{subject}%')
+
+            if filters:
+                query += ' AND ' + ' AND '.join(filters)
+
+            records = db.execute(query, params).fetchall()
+        else:
+            records = db.execute('''
+                SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+                FROM internal_marks im
+                JOIN students s ON im.student_id = s.student_id
+                WHERE s.added_by = ?
+            ''', (user_id,)).fetchall()
+
+        students = db.execute("SELECT student_id, name FROM students WHERE added_by = ?", (user_id,)).fetchall()
+        return render_template('view_internal_marks.html', records=records, students=students)
+
     else:
-        records = db.execute('''
-           SELECT im.student_id, s.name AS student_name, im.subject, im.marks
-FROM internal_marks im
-JOIN students s ON im.student_id = s.student_id
-
-        ''').fetchall()
-
-    students = db.execute("SELECT student_id, name FROM students").fetchall()
-
-    return render_template('view_internal_marks.html', records=records, students=students)
+        return redirect(url_for('choose_login'))
 
 
 @app.route('/delete_internal_marks/<student_id>/<subject>')
@@ -787,7 +808,7 @@ def edit_internal_marks(student_id, subject):
     return render_template('edit_internal_marks.html',
                            student_id=student_id,
                            subject=subject,
-                           marks=row['internal_marks'])
+                           marks=row['marks'])
 
 # Send Message
 

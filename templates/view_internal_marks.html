@@ -3,7 +3,6 @@
 <head>
     <title>Student Internal Marks</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         table {
@@ -40,6 +39,7 @@
 <body>
     <h2 style="text-align:center;">📝 Student Internal Marks</h2>
 
+    {% if session['role'] == 'teacher' %}
     <form method="POST" style="text-align: center;">
         <label for="student_id">Filter by Student ID:</label>
         <select name="student_id">
@@ -51,9 +51,9 @@
 
         <label for="subject">Filter by Subject:</label>
         <input type="text" name="subject" placeholder="e.g. Math">
-
         <input type="submit" value="Filter">
     </form>
+    {% endif %}
 
     <table>
         <tr>
@@ -67,10 +67,10 @@
         </tr>
         {% for record in records %}
         <tr>
-            <td>{{ record['student_id_display'] }}</td>
+            <td>{{ record['student_id'] }}</td>
             <td>{{ record['student_name'] }}</td>
             <td>{{ record['subject'] }}</td>
-            <td>{{ record['internal_marks'] }}</td>  <!-- keep 'grade' if backend still uses it -->
+            <td>{{ record['marks'] }}</td>
             {% if session['role'] == 'teacher' %}
             <td>
                 <a href="{{ url_for('edit_internal_marks', student_id=record['student_id'], subject=record['subject']) }}">Edit</a> |
@@ -85,6 +85,5 @@
     <div style="text-align: center; margin-top: 20px;">
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="background-color: white; color: black; padding: 10px 20px; border: 1px solid #ccc;">⬅️ Back to Dashboard</a>
     </div>
-
 </body>
 </html>
