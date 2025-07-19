@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enter internal marks</title>
+    <title>Enter Internal Marks</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -9,9 +9,8 @@
 </head>
 <body>
     <div class="container fade-in">
-        <h2>📘 Enter internal marks</h2>
+        <h2>📘 Enter Internal Marks</h2>
         <form method="POST">
-           
             <div class="form-group">
                 <label>Select Student:</label>
                 <select name="student_id" class="form-control" required>
@@ -32,13 +31,13 @@
                     <input type="text" class="form-control" name="subject_{{ i }}">
                 </div>
                 <div class="form-group col-md-6">
-                    <label>internal marks :</label>
-                    <input type="text" class="form-control" name="grade_{{ i }}">
+                    <label>Marks:</label>
+                    <input type="text" class="form-control" name="marks_{{ i }}">
                 </div>
             </div>
             {% endfor %}
 
-            <button type="submit" class="btn btn-primary">Submit Grades</button>
+            <button type="submit" class="btn btn-primary">Submit Internal Marks</button>
         </form>
 
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">⬅ Back to Dashboard</a>

@@ -1,29 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Edit Grade</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
+    <title>Edit Internal Marks</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="container fade-in">
-    <h2>✏️ Edit Grade</h2>
-
-    <form method="POST">
-    
-        <div class="form-group">
-            <label>Subject:</label>
-            <input type="text" name="subject" class="form-control" value="{{ grade[1] }}" required>
-        </div>
-        <div class="form-group">
-            <label>Grade:</label>
-            <input type="text" name="grade" class="form-control" value="{{ grade[2] }}" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Update Grade</button>
+    <h2 style="text-align: center;">✏️ Edit Internal Marks</h2>
+    <form method="POST" style="text-align: center;">
+        <p><strong>Student ID:</strong> {{ student_id }}</p>
+        <p><strong>Subject:</strong> {{ subject }}</p>
+        <label>New Marks:</label>
+        <input type="number" name="marks" value="{{ marks }}" required><br><br>
+        <input type="submit" value="Update Marks">
     </form>
 
-    <a href="{{ url_for('view_grades') }}" class="btn btn-secondary mt-3">⬅ Back to Grades</a>
-</div>
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="{{ url_for('view_internal_marks') }}">⬅️ Back to Marks</a>
+    </div>
 </body>
 </html>

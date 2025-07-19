@@ -662,8 +662,8 @@ def verify_otp():
 
     return render_template('verify_otp.html', error=error)
 
-@app.route('/grades', methods=['GET', 'POST'])
-def grades():
+@app.route('/internal_marks', methods=['GET', 'POST'])
+def internal_marks():
     if 'user' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
 
@@ -676,16 +676,16 @@ def grades():
         try:
             for i in range(1, 6):  # For 5 subjects
                 subject = request.form.get(f'subject_{i}')
-                grade = request.form.get(f'grade_{i}')
-                if subject and grade:
-                    db.execute("INSERT INTO grades (student_id, subject, grade) VALUES (?, ?, ?)",
-                               (student_id, subject, grade))
+                marks = request.form.get(f'marks_{i}')
+                if subject and marks:
+                    db.execute("INSERT INTO internal_marks (student_id, subject, marks) VALUES (?, ?, ?)",
+                               (student_id, subject, marks))
             db.commit()
-            return redirect(url_for('view_grades'))
+            return redirect(url_for('view_internal_marks'))
         except sqlite3.IntegrityError:
             error = "Duplicate subject entry for this student is not allowed."
 
-    return render_template('grades.html', students=students, error=error)
+    return render_template('internal_marks.html', students=students, error=error)
 
 
 @app.route('/enter_internal_marks', methods=['GET', 'POST'])
@@ -698,14 +698,14 @@ def enter_grade():
     if request.method == 'POST':
         student_id = request.form['student_id']
         subject = request.form['subject']
-        grade = request.form['grade']
+        marks = request.form['marks']
 
-        db.execute("INSERT INTO grades (student_id, subject, grade) VALUES (?, ?, ?)",
-                   (student_id, subject, grade))
+        db.execute("INSERT INTO internal_marks (student_id, subject, marks) VALUES (?, ?, ?)",
+                   (student_id, subject, marks))
         db.commit()
-        return redirect('/view_grades')
+        return redirect('/view_internal_marks')
 
-    return render_template('enter_grade.html', students=students)
+    return render_template('enter_internal_marks.html', students=students)
 
 
 
@@ -738,9 +738,10 @@ def view_internal_marks():
         records = db.execute(query, params).fetchall()
     else:
         records = db.execute('''
-            SELECT im.student_id, s.name AS student_name, im.subject, im.internal_marks
-            FROM internal_marks im
-            JOIN students s ON im.student_id = s.student_id
+           SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+FROM internal_marks im
+JOIN students s ON im.student_id = s.student_id
+
         ''').fetchall()
 
     students = db.execute("SELECT student_id, name FROM students").fetchall()
@@ -748,39 +749,45 @@ def view_internal_marks():
     return render_template('view_internal_marks.html', records=records, students=students)
 
 
-@app.route('/delete_grade/<student_id>/<subject>')
-def delete_grade(student_id, subject):
-    conn = sqlite3.connect('students.db')
-    c = conn.cursor()
-    c.execute("DELETE FROM grades WHERE student_id = ? AND subject = ?", (student_id, subject))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('view_grades'))
+@app.route('/delete_internal_marks/<student_id>/<subject>')
+def delete_internal_marks(student_id, subject):
+    if 'user' not in session or session.get('role') != 'teacher':
+        return redirect(url_for('choose_login'))
 
-@app.route('/edit_internal_marks/<student_name>/<subject>', methods=['GET', 'POST'])
-def edit_grade(student_name, subject):
+    db = get_db()
+    db.execute("DELETE FROM internal_marks WHERE student_id = ? AND subject = ?", (student_id, subject))
+    db.commit()
+    return redirect(url_for('view_internal_marks'))
+
+
+@app.route('/edit_internal_marks/<student_id>/<subject>', methods=['GET', 'POST'])
+def edit_internal_marks(student_id, subject):
     conn = sqlite3.connect('students.db')
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
     if request.method == 'POST':
-        new_grade = request.form['grade']
+        new_marks = request.form['marks']
         c.execute("""
-            UPDATE grades
-            SET grade = ?
-            WHERE student_id = (SELECT id FROM students WHERE name=?) AND subject = ?
-        """, (new_grade, student_name, subject))
+            UPDATE internal_marks
+            SET internal_marks = ?
+            WHERE student_id = ? AND subject = ?
+        """, (new_marks, student_id, subject))
         conn.commit()
         conn.close()
-        return redirect(url_for('view_grades'))
+        return redirect(url_for('view_internal_marks'))
 
     c.execute("""
-        SELECT grade FROM grades
-        WHERE student_id = (SELECT id FROM students WHERE name=?) AND subject = ?
-    """, (student_name, subject))
-    grade_row = c.fetchone()
+        SELECT internal_marks FROM internal_marks
+        WHERE student_id = ? AND subject = ?
+    """, (student_id, subject))
+    row = c.fetchone()
     conn.close()
-    return render_template('edit_grade.html', student_name=student_name, subject=subject, grade=grade_row['grade'])
+
+    return render_template('edit_internal_marks.html',
+                           student_id=student_id,
+                           subject=subject,
+                           marks=row['internal_marks'])
 
 # Send Message
 
