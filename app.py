@@ -778,7 +778,7 @@ def edit_internal_marks(student_id, subject):
         return redirect(url_for('view_internal_marks'))
 
     c.execute("""
-        SELECT internal_marks FROM internal_marks
+        SELECT * FROM internal_marks
         WHERE student_id = ? AND subject = ?
     """, (student_id, subject))
     row = c.fetchone()
