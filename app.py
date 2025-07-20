@@ -503,17 +503,30 @@ def student_view_attendance():
         return redirect(url_for('choose_login'))
 
     db = get_db()
-    student_id = session['user']  # or session['user'] if you're storing student_id there
-    attendance = db.execute("SELECT * FROM attendance WHERE student_id = ?", (student_id,)).fetchall()
-    return render_template('student_view_attendance.html', attendance=attendance)
-    session['user'] = student['student_id']
+    student_id = session['user']  # This should be student_id like 'S101'
 
-    # Count totals
-    total_present = sum(1 for r in records if r['status'] == 'Present')
-    total_absent = sum(1 for r in records if r['status'] == 'Absent')
+    # Fetch attendance records for the logged-in student
+    records = db.execute("""
+        SELECT date, period1, period2, period3, period4, period5, period6, remarks
+        FROM attendance
+        WHERE student_id = ?
+        ORDER BY date DESC
+    """, (student_id,)).fetchall()
+
+    # Count total 'Present' and 'Absent' from all periods
+    total_present = 0
+    total_absent = 0
+
+    for record in records:
+        for i in range(1, 7):  # period1 to period6
+            status = record[f'period{i}']
+            if status == 'Present':
+                total_present += 1
+            elif status == 'Absent':
+                total_absent += 1
 
     return render_template(
-        'view_attendance.html',
+        'student_view_attendance.html',
         records=records,
         total_present=total_present,
         total_absent=total_absent
@@ -836,6 +849,8 @@ def send_message():
 
     return render_template('send_message.html', users=users)
 
+
+
 # View Inbox
 @app.route('/inbox')
 def inbox():
@@ -847,6 +862,7 @@ def inbox():
                           (session['user'],)).fetchall()
     
     return render_template('inbox.html', messages=messages)
+
 
 if __name__ == '__main__':
     init_db()
