@@ -26,7 +26,7 @@ from datetime import timedelta
 
 app.permanent_session_lifetime = timedelta(minutes=20)  # Auto-logout after 20 minutes
 
-DATABASE = 'students.db'
+DATABASE = 'database.db'
 
 # Database connection
 def get_db():

@@ -63,15 +63,15 @@
                             <td>{{ student.student_id }}</td>
                             <td>{{ student.name }}</td>
                             <td>
-                                <select name="status_{{ student.student_id }}" class="form-select" required>
-    <option value="Present">Present</option>
-    <option value="Absent">Absent</option>
-</select>
+    <select name="status_{{ student.student_id }}" class="form-select" required>
+        <option value="Present">Present</option>
+        <option value="Absent">Absent</option>
+    </select>
+</td>
+<td>
+    <input type="text" name="remarks_{{ student.student_id }}" class="form-control" placeholder="Optional">
+</td>
 
-                            </td>
-                            <td>
-                                <input type="text" name="remarks_{{ student.student_id }}" class="form-control" placeholder="Optional">
-                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
