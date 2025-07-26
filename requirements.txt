@@ -12,3 +12,4 @@ scapy==2.6.1
 colorama==0.4.6
 click==8.1.7
 blinker==1.9.0
+gunicorn
