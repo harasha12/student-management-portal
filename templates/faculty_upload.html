@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📤 Upload Faculty Files</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2 style="text-align: center;">📤 Upload Documents</h2>
+
+    <form method="POST" enctype="multipart/form-data" style="text-align: center;">
+        <label>Document Title:</label><br>
+        <input type="text" name="title" required><br><br>
+
+        <label>Upload Type:</label><br>
+        <select name="file_type" required>
+            <option value="timetable">Time Table</option>
+            <option value="marks">Internal Marks</option>
+            <option value="students">Student Details</option>
+            <option value="notice">Notice</option>
+        </select><br><br>
+
+        <label>Branch:</label><br>
+        <select name="branch" required>
+            <option value="CSE">CSE-A</option>
+            <option value="CSE">CSE-B</option>
+            <option value="CSE">CSE-C</option>
+            <option value="CSE">CSE-D</option>
+            <option value="CSE">CSC-cyber security</option>
+            <option value="ECE">ECE</option>
+            <option value="EEE">EEE</option>
+            <option value="MECH">MECH</option>
+        </select><br><br>
+
+        <input type="file" name="file" accept=".pdf,.xlsx,.csv,.jpg,.png,.txt" required><br><br>
+
+        <button type="submit">Upload</button>
+    </form>
+
+    <p style="text-align: center; color: green;">{{ msg }}</p>
+
+    <h3 style="text-align: center;">📂 Your Uploaded Documents</h3>
+    <table border="1" style="margin:auto;">
+        <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Branch</th>
+            <th>File</th>
+            <th>Date</th>
+            <th>Action</th>
+        </tr>
+        {% for file in files %}
+        <tr>
+            <td>{{ file['title'] }}</td>
+            <td>{{ file['file_type'] }}</td>
+            <td>{{ file['branch'] }}</td>
+            <td><a href="{{ url_for('static', filename='../uploads/' + file['filename']) }}" target="_blank">{{ file['filename'] }}</a></td>
+            <td>{{ file['upload_date'] }}</td>
+            <td>
+                <form method="POST" action="/delete_upload/{{ file['id'] }}" onsubmit="return confirm('Delete this file?');">
+                    <button type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

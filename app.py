@@ -26,21 +26,40 @@ from datetime import timedelta
 
 app.permanent_session_lifetime = timedelta(minutes=20)  # Auto-logout after 20 minutes
 
-DATABASE = 'database.db'
+
 
 # Database connection
+import sqlite3
+from flask import g
+import os
+
+import sqlite3
+from flask import g
+
 def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
-    return db
+    if 'db' not in g:
+        # Connect to a local SQLite database file named "database.db"
+        g.db = sqlite3.connect("database.db")
+        # Optional: set row_factory so rows can be accessed like dictionaries
+        g.db.row_factory = sqlite3.Row
+    return g.db
 
 @app.teardown_appcontext
 def close_connection(exception):
-    db = getattr(g, '_database', None)
+    db = g.pop('db', None)
     if db is not None:
         db.close()
+import pdfplumber
+import PyPDF2
+
+def read_pdf_text(filepath):
+    text = ''
+    with open(filepath, 'rb') as f:
+        reader = PyPDF2.PdfReader(f)
+        for page in reader.pages:
+            text += page.extract_text()
+    return text  # You can store this if needed
+
 
 # Initialize DB
 def init_db():
@@ -161,7 +180,7 @@ def register_student():
 import sqlite3
 
 def create_internal_marks_table():
-    conn = sqlite3.connect('your_database_name.db')  # Replace with your DB file name
+    conn = sqlite3.connect('database.db')  # Replace with your DB file name
     cursor = conn.cursor()
 
     cursor.execute('''
@@ -176,7 +195,7 @@ def create_internal_marks_table():
 
     conn.commit()
     conn.close()
-    print("✅ internal_marks table created.")
+    
 
 create_internal_marks_table()
 
@@ -222,15 +241,25 @@ def student_login():
         username = request.form['username']
         password = request.form['password']
         db = get_db()
+
+        # Authenticate from 'users' table
         user = db.execute("SELECT * FROM users WHERE username = ? AND role = 'student'", (username,)).fetchone()
+
         if user and check_password_hash(user['password'], password):
-            session.permanent = True
-            session['user'] = user['username']
-            session['role'] = 'student'
-            return redirect(url_for('dashboard'))
+            # ✅ Now fetch student_id from students table
+            student = db.execute("SELECT student_id FROM students WHERE username = ?", (username,)).fetchone()
+
+            if student:
+                session.permanent = True
+                session['user'] = student['student_id']  # ✅ Store student_id in session
+                session['role'] = 'student'
+                return redirect(url_for('dashboard'))
+            else:
+                error = "Student record not found."
         else:
             error = "Invalid student credentials."
     return render_template('student_login.html', error=error)
+
 
 # Dashboard
 @app.route('/dashboard')
@@ -248,6 +277,9 @@ def dashboard():
     else:
         return "Unauthorized", 403
 
+@app.route('/')
+def home():
+    return render_template('choose_login.html')
 
 
 # Add Student
@@ -266,17 +298,23 @@ def add_student():
         db = get_db()
 
         try:
+            print("Saving student:", student_id, name, email, course, date, added_by)
+
             db.execute(
                 "INSERT INTO students (student_id, name, email, course, enrollment_date, added_by) VALUES (?, ?, ?, ?, ?, ?)",
                 (student_id, name, email, course, date, added_by)
             )
             db.commit()
             return redirect(url_for('view_students'))
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            print("DB Error:", e)
             return "Student ID already exists."
 
     return render_template('add_student.html')
 
+@app.route('/test')
+def test():
+    return "Test route working"
 
 
 # View Students
@@ -285,6 +323,9 @@ def view_students():
     if 'user' not in session:
         return redirect('/')
     db = get_db()
+    import os
+    print("Connected DB path:", os.path.abspath('student.db'))
+
     students = db.execute("SELECT * FROM students").fetchall()
     return render_template('view_students.html', students=students)
 @app.route('/edit_student/<int:id>', methods=['GET', 'POST'])
@@ -376,8 +417,8 @@ def mark_attendance():
                 """, (status_value, remarks, student_id, date))
             else:
                 db.execute("""
-                    INSERT INTO attendance (student_id, date, period1, period2, period3, period4, period5, period6, remarks)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO attendance (student_id, date, period1, period2, period3, period4, period5, period6, remarks,added_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
                 """, (
                     student_id, date,
                     period_data['period1'],
@@ -386,7 +427,8 @@ def mark_attendance():
                     period_data['period4'],
                     period_data['period5'],
                     period_data['period6'],
-                    remarks
+                    remarks,
+                    teacher_username
                 ))
 
         db.commit()
@@ -721,6 +763,135 @@ def enter_grade():
     return render_template('enter_internal_marks.html', students=students)
 
 
+# ✅ app.py additions
+
+import os
+import sqlite3
+import pandas as pd
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, session, url_for
+from werkzeug.utils import secure_filename
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'pdf', 'jpg', 'png', 'txt'}
+
+# --- Helper ---
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- Upload Document Route ---
+@app.route('/faculty_upload', methods=['GET', 'POST'])
+def faculty_upload():
+    if 'user' not in session or session.get('role') != 'teacher':
+        return redirect('/')
+
+    msg = ""
+    if request.method == 'POST':
+        file = request.files['file']
+        title = request.form['title']
+        file_type = request.form['file_type']
+        branch = request.form['branch']
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+
+            conn = sqlite3.connect('database.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO faculty_uploads (title, branch, filename, uploaded_by, file_type, upload_date)
+                VALUES (?, ?, ?, ?, ?, ?)''',
+                (title, branch, filename, session['user'], file_type, datetime.now().strftime('%Y-%m-%d')))
+            conn.commit()
+
+            # ✅ Auto-insert students if file_type is 'students'
+            if file_type == 'students' and filename.endswith(('.xlsx', '.xls')):
+                try:
+                    import pandas as pd
+                    df = pd.read_excel(filepath)
+
+                    for _, row in df.iterrows():
+                        cursor.execute('''
+                            INSERT OR IGNORE INTO students (name, student_id, branch, email, added_by)
+                            VALUES (?, ?, ?, ?, ?)''',
+                            (
+                                row['Name'],
+                                row['Student ID'],
+                                row['Branch'],
+                                row.get('Email', ''),
+                                session['user']
+                            )
+                        )
+                    conn.commit()
+                    msg = "✅ File uploaded and student data inserted successfully!"
+                except Exception as e:
+                    msg = f"⚠️ Uploaded file saved, but error reading Excel: {str(e)}"
+            else:
+                msg = "✅ File uploaded successfully!"
+
+            conn.close()
+        else:
+            msg = "❌ Invalid file format."
+
+    # Fetch uploaded files by current teacher
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''SELECT id, title, file_type, branch, filename, upload_date FROM faculty_uploads 
+                      WHERE uploaded_by = ? ORDER BY upload_date DESC''', (session['user'],))
+    data = cursor.fetchall()
+    conn.close()
+
+    files = [{'id': row[0], 'title': row[1], 'file_type': row[2], 'branch': row[3], 'filename': row[4], 'upload_date': row[5]} for row in data]
+
+    return render_template('faculty_upload.html', msg=msg, files=files)
+
+# --- Delete Uploaded File ---
+@app.route('/delete_upload/<int:id>', methods=['POST'])
+def delete_upload(id):
+    if 'user' not in session or session.get('role') != 'teacher':
+        return redirect('/')
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT filename FROM faculty_uploads WHERE id = ? AND uploaded_by = ?', (id, session['user']))
+    result = cursor.fetchone()
+
+    if result:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], result[0])
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        cursor.execute('DELETE FROM faculty_uploads WHERE id = ?', (id,))
+        conn.commit()
+
+    conn.close()
+    return redirect('/faculty_upload')
+
+# --- Student View Timetable (Latest for their branch) ---
+@app.route('/view_timetable')
+def view_timetable():
+    if 'user' not in session or session.get('role') != 'student':
+        return redirect('/')
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    student_branch = cursor.execute('SELECT branch FROM students WHERE student_id = ?', (session['user'],)).fetchone()
+
+    timetable = None
+    if student_branch:
+        branch = student_branch[0]
+        cursor.execute("SELECT filename FROM faculty_uploads WHERE branch = ? AND file_type = 'timetable' ORDER BY upload_date DESC LIMIT 1", (branch,))
+        result = cursor.fetchone()
+        if result:
+            timetable = result[0]
+
+    conn.close()
+    return render_template('view_timetable.html', timetable=timetable)
+
+# --- Create Upload Folder ---
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
 def view_internal_marks():
@@ -796,7 +967,7 @@ def delete_internal_marks(student_id, subject):
 
 @app.route('/edit_internal_marks/<student_id>/<subject>', methods=['GET', 'POST'])
 def edit_internal_marks(student_id, subject):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 

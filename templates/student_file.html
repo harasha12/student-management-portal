@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View {{ file_type.capitalize() }} Files</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2 style="text-align: center;">📁 {{ file_type.capitalize() }} Files</h2>
+
+    {% if files %}
+    <table border="1" style="margin:auto;">
+        <tr>
+            <th>Title</th>
+            <th>File</th>
+            <th>Date</th>
+        </tr>
+        {% for file in files %}
+        <tr>
+            <td>{{ file[0] }}</td>
+            <td><a href="{{ url_for('static', filename='../uploads/' + file[1]) }}" target="_blank">{{ file[1] }}</a></td>
+            <td>{{ file[2] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+        <p style="text-align: center; color: red;">No {{ file_type }} files uploaded for your branch yet.</p>
+    {% endif %}
+</body>
+</html>
