@@ -7,6 +7,8 @@ from flask_mail import Mail, Message
 from flask import Flask, render_template, request, redirect, url_for, session, g
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+print("TEMPLATE FOLDER PATH:", os.path.join(os.getcwd(), "templates"))
 
 
 app = Flask(__name__)
@@ -72,7 +74,8 @@ def init_db():
                             name TEXT,
                             email TEXT,
                             course TEXT,
-                            enrollment_date TEXT)''')
+                            enrollment_date TEXT,
+                       added_by TEXT)''')
         
         cursor.execute('''CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,27 +181,6 @@ def register_student():
     return render_template('register.html', error=error, success=success)
 
 import sqlite3
-
-def create_internal_marks_table():
-    conn = sqlite3.connect('database.db')  # Replace with your DB file name
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS internal_marks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            internal_marks TEXT NOT NULL,
-            entered_by TEXT NOT NULL
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
-    
-
-create_internal_marks_table()
-
 @app.route('/create_internal_marks_table')
 def create_internal_marks_table():
     db = get_db()
@@ -214,9 +196,7 @@ def create_internal_marks_table():
     db.commit()
     return "✅ internal_marks table created successfully!"
 
-@app.route('/')
-def choose_login():
-    return render_template('choose_login.html')
+
 @app.route('/teacher_login', methods=['GET', 'POST'])
 def teacher_login():
     error = None
@@ -275,11 +255,7 @@ def dashboard():
     elif user['role'] == 'student':
         return render_template('student_dashboard.html', user=user['username'])
     else:
-        return "Unauthorized", 403
-
-@app.route('/')
-def home():
-    return render_template('choose_login.html')
+        return "Unauthorized", 40
 
 
 # Add Student
@@ -763,195 +739,195 @@ def enter_grade():
     return render_template('enter_internal_marks.html', students=students)
 
 
-# ✅ app.py additions
+# # ✅ app.py additions
 
-import os
-import sqlite3
-import pandas as pd
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, session, url_for
-from werkzeug.utils import secure_filename
+# import os
+# import sqlite3
+# import pandas as pd
+# from datetime import datetime
+# from flask import Flask, render_template, request, redirect, session, url_for
+# from werkzeug.utils import secure_filename
 
-app = Flask(__name__)
-app.secret_key = 'your_secret_key'
-app.config['UPLOAD_FOLDER'] = 'uploads'
-ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'pdf', 'jpg', 'png', 'txt'}
+# app = Flask(__name__)
+# app.secret_key = 'your_secret_key'
+# app.config['UPLOAD_FOLDER'] = 'uploads'
+# ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'pdf', 'jpg', 'png', 'txt'}
 
-# --- Helper ---
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# # --- Helper ---
+# def allowed_file(filename):
+#     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- Upload Document Route ---
-@app.route('/faculty_upload', methods=['GET', 'POST'])
-def faculty_upload():
-    if 'user' not in session or session.get('role') != 'teacher':
-        return redirect('/')
+# # --- Upload Document Route ---
+# @app.route('/faculty_upload', methods=['GET', 'POST'])
+# def faculty_upload():
+#     if 'user' not in session or session.get('role') != 'teacher':
+#         return redirect('/')
 
-    msg = ""
-    if request.method == 'POST':
-        file = request.files['file']
-        title = request.form['title']
-        file_type = request.form['file_type']
-        branch = request.form['branch']
+#     msg = ""
+#     if request.method == 'POST':
+#         file = request.files['file']
+#         title = request.form['title']
+#         file_type = request.form['file_type']
+#         branch = request.form['branch']
 
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
+#         if file and allowed_file(file.filename):
+#             filename = secure_filename(file.filename)
+#             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+#             file.save(filepath)
 
-            conn = sqlite3.connect('database.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO faculty_uploads (title, branch, filename, uploaded_by, file_type, upload_date)
-                VALUES (?, ?, ?, ?, ?, ?)''',
-                (title, branch, filename, session['user'], file_type, datetime.now().strftime('%Y-%m-%d')))
-            conn.commit()
+#             conn = sqlite3.connect('database.db')
+#             cursor = conn.cursor()
+#             cursor.execute('''
+#                 INSERT INTO faculty_uploads (title, branch, filename, uploaded_by, file_type, upload_date)
+#                 VALUES (?, ?, ?, ?, ?, ?)''',
+#                 (title, branch, filename, session['user'], file_type, datetime.now().strftime('%Y-%m-%d')))
+#             conn.commit()
 
-            # ✅ Auto-insert students if file_type is 'students'
-            if file_type == 'students' and filename.endswith(('.xlsx', '.xls')):
-                try:
-                    import pandas as pd
-                    df = pd.read_excel(filepath)
+#             # ✅ Auto-insert students if file_type is 'students'
+#             if file_type == 'students' and filename.endswith(('.xlsx', '.xls')):
+#                 try:
+#                     import pandas as pd
+#                     df = pd.read_excel(filepath)
 
-                    for _, row in df.iterrows():
-                        cursor.execute('''
-                            INSERT OR IGNORE INTO students (name, student_id, branch, email, added_by)
-                            VALUES (?, ?, ?, ?, ?)''',
-                            (
-                                row['Name'],
-                                row['Student ID'],
-                                row['Branch'],
-                                row.get('Email', ''),
-                                session['user']
-                            )
-                        )
-                    conn.commit()
-                    msg = "✅ File uploaded and student data inserted successfully!"
-                except Exception as e:
-                    msg = f"⚠️ Uploaded file saved, but error reading Excel: {str(e)}"
-            else:
-                msg = "✅ File uploaded successfully!"
+#                     for _, row in df.iterrows():
+#                         cursor.execute('''
+#                             INSERT OR IGNORE INTO students (name, student_id, branch, email, added_by)
+#                             VALUES (?, ?, ?, ?, ?)''',
+#                             (
+#                                 row['Name'],
+#                                 row['Student ID'],
+#                                 row['Branch'],
+#                                 row.get('Email', ''),
+#                                 session['user']
+#                             )
+#                         )
+#                     conn.commit()
+#                     msg = "✅ File uploaded and student data inserted successfully!"
+#                 except Exception as e:
+#                     msg = f"⚠️ Uploaded file saved, but error reading Excel: {str(e)}"
+#             else:
+#                 msg = "✅ File uploaded successfully!"
 
-            conn.close()
-        else:
-            msg = "❌ Invalid file format."
+#             conn.close()
+#         else:
+#             msg = "❌ Invalid file format."
 
-    # Fetch uploaded files by current teacher
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('''SELECT id, title, file_type, branch, filename, upload_date FROM faculty_uploads 
-                      WHERE uploaded_by = ? ORDER BY upload_date DESC''', (session['user'],))
-    data = cursor.fetchall()
-    conn.close()
+#     # Fetch uploaded files by current teacher
+#     conn = sqlite3.connect('database.db')
+#     cursor = conn.cursor()
+#     cursor.execute('''SELECT id, title, file_type, branch, filename, upload_date FROM faculty_uploads 
+#                       WHERE uploaded_by = ? ORDER BY upload_date DESC''', (session['user'],))
+#     data = cursor.fetchall()
+#     conn.close()
 
-    files = [{'id': row[0], 'title': row[1], 'file_type': row[2], 'branch': row[3], 'filename': row[4], 'upload_date': row[5]} for row in data]
+#     files = [{'id': row[0], 'title': row[1], 'file_type': row[2], 'branch': row[3], 'filename': row[4], 'upload_date': row[5]} for row in data]
 
-    return render_template('faculty_upload.html', msg=msg, files=files)
+#     return render_template('faculty_upload.html', msg=msg, files=files)
 
-# --- Delete Uploaded File ---
-@app.route('/delete_upload/<int:id>', methods=['POST'])
-def delete_upload(id):
-    if 'user' not in session or session.get('role') != 'teacher':
-        return redirect('/')
+# # --- Delete Uploaded File ---
+# @app.route('/delete_upload/<int:id>', methods=['POST'])
+# def delete_upload(id):
+#     if 'user' not in session or session.get('role') != 'teacher':
+#         return redirect('/')
 
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT filename FROM faculty_uploads WHERE id = ? AND uploaded_by = ?', (id, session['user']))
-    result = cursor.fetchone()
+#     conn = sqlite3.connect('database.db')
+#     cursor = conn.cursor()
+#     cursor.execute('SELECT filename FROM faculty_uploads WHERE id = ? AND uploaded_by = ?', (id, session['user']))
+#     result = cursor.fetchone()
 
-    if result:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], result[0])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        cursor.execute('DELETE FROM faculty_uploads WHERE id = ?', (id,))
-        conn.commit()
+#     if result:
+#         filepath = os.path.join(app.config['UPLOAD_FOLDER'], result[0])
+#         if os.path.exists(filepath):
+#             os.remove(filepath)
+#         cursor.execute('DELETE FROM faculty_uploads WHERE id = ?', (id,))
+#         conn.commit()
 
-    conn.close()
-    return redirect('/faculty_upload')
+#     conn.close()
+#     return redirect('/faculty_upload')
 
-# --- Student View Timetable (Latest for their branch) ---
-@app.route('/view_timetable')
-def view_timetable():
-    if 'user' not in session or session.get('role') != 'student':
-        return redirect('/')
+# # --- Student View Timetable (Latest for their branch) ---
+# @app.route('/view_timetable')
+# def view_timetable():
+#     if 'user' not in session or session.get('role') != 'student':
+#         return redirect('/')
 
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    student_branch = cursor.execute('SELECT branch FROM students WHERE student_id = ?', (session['user'],)).fetchone()
+#     conn = sqlite3.connect('database.db')
+#     cursor = conn.cursor()
+#     student_branch = cursor.execute('SELECT branch FROM students WHERE student_id = ?', (session['user'],)).fetchone()
 
-    timetable = None
-    if student_branch:
-        branch = student_branch[0]
-        cursor.execute("SELECT filename FROM faculty_uploads WHERE branch = ? AND file_type = 'timetable' ORDER BY upload_date DESC LIMIT 1", (branch,))
-        result = cursor.fetchone()
-        if result:
-            timetable = result[0]
+#     timetable = None
+#     if student_branch:
+#         branch = student_branch[0]
+#         cursor.execute("SELECT filename FROM faculty_uploads WHERE branch = ? AND file_type = 'timetable' ORDER BY upload_date DESC LIMIT 1", (branch,))
+#         result = cursor.fetchone()
+#         if result:
+#             timetable = result[0]
 
-    conn.close()
-    return render_template('view_timetable.html', timetable=timetable)
+#     conn.close()
+#     return render_template('view_timetable.html', timetable=timetable)
 
-# --- Create Upload Folder ---
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# # --- Create Upload Folder ---
+# os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
 def view_internal_marks():
-    if 'user' not in session:
-        return redirect(url_for('choose_login'))
+     if 'user' not in session:
+         return redirect(url_for('choose_login'))
 
-    db = get_db()
-    role = session.get('role')
-    user_id = session['user']
+     db = get_db()
+     role = session.get('role')
+     user_id = session['user']
 
-    if role == 'student':
-        # Show only logged-in student's internal marks
-        records = db.execute('''
-            SELECT im.student_id, s.name AS student_name, im.subject, im.marks
-            FROM internal_marks im
-            JOIN students s ON im.student_id = s.student_id
-            WHERE im.student_id = ?
-        ''', (user_id,)).fetchall()
+     if role == 'student':
+         # Show only logged-in student's internal marks
+         records = db.execute('''
+             SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+             FROM internal_marks im
+             JOIN students s ON im.student_id = s.student_id
+             WHERE im.student_id = ?
+         ''', (user_id,)).fetchall()
 
-        return render_template('view_internal_marks.html', records=records)
+         return render_template('view_internal_marks.html', records=records)
 
-    elif role == 'teacher':
-        # Show filter form and all students' marks
-        if request.method == 'POST':
-            student_id = request.form.get('student_id')
-            subject = request.form.get('subject')
+     elif role == 'teacher':
+         # Show filter form and all students' marks
+         if request.method == 'POST':
+             student_id = request.form.get('student_id')
+             subject = request.form.get('subject')
 
-            query = '''
-                SELECT im.student_id, s.name AS student_name, im.subject, im.marks
-                FROM internal_marks im
-                JOIN students s ON im.student_id = s.student_id
-                WHERE s.added_by = ?
-            '''
-            filters = []
-            params = [user_id]  # teacher who added students
+             query = '''
+                 SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+                 FROM internal_marks im
+                 JOIN students s ON im.student_id = s.student_id
+                 WHERE s.added_by = ?
+             '''
+             filters = []
+             params = [user_id]  # teacher who added students
 
-            if student_id:
-                filters.append('im.student_id = ?')
-                params.append(student_id)
-            if subject:
-                filters.append('im.subject LIKE ?')
-                params.append(f'%{subject}%')
+             if student_id:
+                 filters.append('im.student_id = ?')
+                 params.append(student_id)
+             if subject:
+                 filters.append('im.subject LIKE ?')
+                 params.append(f'%{subject}%')
 
-            if filters:
-                query += ' AND ' + ' AND '.join(filters)
+             if filters:
+                 query += ' AND ' + ' AND '.join(filters)
 
-            records = db.execute(query, params).fetchall()
-        else:
-            records = db.execute('''
-                SELECT im.student_id, s.name AS student_name, im.subject, im.marks
-                FROM internal_marks im
-                JOIN students s ON im.student_id = s.student_id
-                WHERE s.added_by = ?
-            ''', (user_id,)).fetchall()
+             records = db.execute(query, params).fetchall()
+         else:
+             records = db.execute('''
+                 SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+                 FROM internal_marks im
+                 JOIN students s ON im.student_id = s.student_id
+                 WHERE s.added_by = ?
+             ''', (user_id,)).fetchall()
 
-        students = db.execute("SELECT student_id, name FROM students WHERE added_by = ?", (user_id,)).fetchall()
-        return render_template('view_internal_marks.html', records=records, students=students)
+         students = db.execute("SELECT student_id, name FROM students WHERE added_by = ?", (user_id,)).fetchall()
+         return render_template('view_internal_marks.html', records=records, students=students)
 
-    else:
-        return redirect(url_for('choose_login'))
+     else:
+         return redirect(url_for('choose_login'))
 
 
 @app.route('/delete_internal_marks/<student_id>/<subject>')
@@ -1034,7 +1010,13 @@ def inbox():
     
     return render_template('inbox.html', messages=messages)
 
+from flask import render_template
+@app.route('/')
+def choose_login():
+    return render_template('choose_login.html')
+
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
+    
