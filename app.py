@@ -354,12 +354,28 @@ def teacher_dashboard():
     try:
         username = session['username']  # teacher's username
         cursor.execute("SELECT * FROM users WHERE username = %s AND role = 'teacher'", (username,))
-        user = cursor.fetchone()
+        teacher = cursor.fetchone()
 
-        if not user:
+        if not teacher:
             return "Unauthorized", 403
 
-        return render_template('teacher_dashboard.html', user=username)
+        # ✅ Fetch all students
+        cursor.execute("SELECT student_id, name, course FROM students")
+        students = cursor.fetchall()
+
+        # ✅ Fetch all marks
+        cursor.execute("SELECT * FROM internal_marks")
+        marks = cursor.fetchall()
+
+        # ✅ Fetch latest attendance records (optional)
+        cursor.execute("SELECT * FROM attendance ORDER BY date DESC LIMIT 20")
+        attendance = cursor.fetchall()
+
+        return render_template('teacher_dashboard.html',
+                               teacher=teacher,
+                               students=students,
+                               marks=marks,
+                               attendance=attendance)
     finally:
         cursor.close()
 
@@ -373,55 +389,44 @@ def student_dashboard():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        student_id = session['user']  # ✅ use session['user']
+        student_id = session['user']  # ✅ student_id stored in session
 
-        # Fetch full student data from users
-        cursor.execute("SELECT * FROM users WHERE username = %s AND role = 'student'", (student_id,))
-        user = cursor.fetchone()
-        if not user:
+        # ✅ Student details from students table
+        cursor.execute("SELECT * FROM students WHERE student_id = %s", (student_id,))
+        student = cursor.fetchone()
+        if not student:
             return "Unauthorized or student not found", 403
 
-        # Fetch grades
-        cursor.execute("SELECT * FROM grades WHERE student_id = %s", (student_id,))
-        grades = cursor.fetchall()
+        # ✅ Internal marks
+        cursor.execute("SELECT subject, marks FROM internal_marks WHERE student_id = %s", (student_id,))
+        marks = cursor.fetchall()
 
-        # Fetch attendance (last 6 months)
-        six_months_ago_str = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+        # ✅ Attendance (last 6 months, using status column)
+        six_months_ago = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
         cursor.execute("""
-            SELECT date, period1, period2, period3, period4, period5, period6, remarks
+            SELECT date, status 
             FROM attendance
             WHERE student_id = %s AND date >= %s
             ORDER BY date DESC
-        """, (student_id, six_months_ago_str))
+        """, (student_id, six_months_ago))
         records = cursor.fetchall()
 
         # Attendance summary
-        total_present = total_absent = total_periods = 0
-        for rec in records:
-            for i in range(1, 7):
-                status = rec.get(f'period{i}')
-                if status:
-                    total_periods += 1
-                    if status.strip().lower() == 'present':
-                        total_present += 1
-                    elif status.strip().lower() == 'absent':
-                        total_absent += 1
-        attendance_percentage = (total_present / total_periods * 100) if total_periods > 0 else 0
+        total_present = sum(1 for r in records if r['status'] and r['status'].lower() == 'present')
+        total_absent = sum(1 for r in records if r['status'] and r['status'].lower() == 'absent')
+        total_days = len(records)
+        attendance_percentage = (total_present / total_days * 100) if total_days > 0 else 0
 
         return render_template('student_dashboard.html',
-                               user=user,
-                               grades=grades,
+                               student=student,
+                               marks=marks,
+                               records=records,
                                total_present=total_present,
                                total_absent=total_absent,
                                attendance_percentage=round(attendance_percentage, 2))
     finally:
         cursor.close()
-
-
-
-
-
-# ---------------------
+#--------------------
 # Add / View / Edit / Delete Students
 # ---------------------
 from flask import flash
@@ -576,8 +581,8 @@ def mark_attendance():
     teacher_username = session['username']
 
     try:
-        # fetch students added by this teacher (use student_id = username)
-        cursor.execute("SELECT username AS student_id, name FROM students WHERE added_by = %s", (teacher_username,))
+        # ✅ Fetch ALL students (not only added_by, otherwise empty after Excel uploads)
+        cursor.execute("SELECT student_id, name FROM students")
         students = cursor.fetchall()
 
         selected_period = None
@@ -612,6 +617,7 @@ def mark_attendance():
                         c2.execute(update_sql, (status_value, remarks, student_id, date))
                         db.commit()
                     else:
+                        # create new row with all 6 periods as NULL
                         period_fields = [None] * 6
                         period_fields[int(selected_period) - 1] = status_value
                         c2.execute(
@@ -652,7 +658,6 @@ def view_attendance():
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    teacher_username = session['username']
 
     try:
         today = datetime.today().date()
@@ -667,16 +672,18 @@ def view_attendance():
                 except ValueError:
                     selected_date = today
 
+        # ✅ Fix join and remove added_by filter
         cursor.execute('''
-            SELECT s.username AS student_id, s.name, a.date,
+            SELECT s.student_id, s.name, a.date,
                    a.period1, a.period2, a.period3, a.period4, a.period5, a.period6, a.remarks
             FROM attendance a
-            JOIN students s ON a.student_id = s.username
-            WHERE s.added_by = %s AND a.date BETWEEN %s AND %s
+            JOIN students s ON a.student_id = s.student_id
+            WHERE a.date BETWEEN %s AND %s
             ORDER BY a.date DESC
-        ''', (teacher_username, six_months_ago, selected_date))
+        ''', (six_months_ago, selected_date))
         records = cursor.fetchall()
 
+        # ✅ Attendance summary
         total_present = total_absent = total_slots = 0
         for row in records:
             for i in range(1, 7):
@@ -698,9 +705,6 @@ def view_attendance():
                                selected_date=selected_date)
     finally:
         cursor.close()
-
-
-from datetime import datetime, timedelta
 
 @app.route('/student_view_attendance')
 def student_view_attendance():
