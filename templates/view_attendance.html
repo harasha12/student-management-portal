@@ -28,13 +28,13 @@
 </head>
 <body>
     <h2 style="text-align:center;">📅 Attendance Records</h2>
-<!-- 🖨️ Print Button -->
-<div class="print-button">
-    <button onclick="window.print()" class="btn btn-primary">🖨️ Print Attendance</button>
-</div>
+
 {% if session['role'] == 'teacher' %}
 <div class="text-center mt-3">
-    <a href="{{ url_for('download_attendance_pdf') }}" class="btn btn-success">📥 Download PDF</a>
+    <a href="{{ url_for('download_attendance_excel') }}" class="btn btn-outline-info m-2">
+    ⬇️ Download Attendance (Excel)
+</a>
+
 </div>
 {% endif %}
 
@@ -77,11 +77,16 @@
 </div>
 
 </div>
+<form method="POST" style="margin-bottom: 20px;">
+    <label for="selected_date">Select Date (within last 6 months):</label>
+    <input type="date" name="selected_date" max="{{ selected_date }}">
+    <button type="submit">Filter</button>
+</form>
 
 
 <!-- Back to Dashboard -->
 <div class="text-center mt-4">
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">⬅️ Back to Dashboard</a>
+    <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary">⬅️ Back to Dashboard</a>
 </div>
 
 

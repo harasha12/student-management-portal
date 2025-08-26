@@ -19,6 +19,8 @@
 <a href="{{ url_for('view_students') }}" class="btn btn-success m-2">📋 View Students</a>
 <a href="{{ url_for('mark_attendance') }}" class="btn btn-warning m-2">📝 Mark Attendance</a>
 <a href="{{ url_for('view_attendance') }}" class="btn btn-info m-2">📅 View Attendance</a>
+<a href="{{ url_for('download_attendance_excel') }}" class="btn btn-outline-info m-2">⬇️ Download Attendance (Excel)
+</a>
 <a href="{{ url_for('internal_marks') }}" class="btn btn-secondary m-2">🎓 Mark internal_marks</a>
 <a href="{{ url_for('view_internal_marks') }}" class="btn btn-dark m-2">📖 View internal marks</a>
 <a href="{{ url_for('send_message') }}" class="btn btn-outline-primary m-2">✉️ Send Message</a>
@@ -27,9 +29,16 @@
 <a href="{{ url_for('logout') }}" class="btn btn-danger m-2">🚪 Logout</a>
 
 </div>
-<a href="{{ url_for('custom_attendance_percentage') }}" class="btn btn-warning w-100 mb-3">
-    🗓️ Attendance % (Custom Date Range)
+<a href="{{ url_for('custom_attendance_percentage') }}" 
+   class="btn btn-lg btn-gradient w-100 my-3 shadow-sm">
+    🗓️ View Attendance % (Custom Date Range)
 </a>
+<h3>Bulk Upload</h3>
+<ul>
+    <li><a href="{{ url_for('upload_file', datatype='students') }}">Upload Students</a></li>
+    <li><a href="{{ url_for('upload_file', datatype='marks') }}">Upload Marks</a></li>
+    <li><a href="{{ url_for('upload_file', datatype='attendance') }}">Upload Attendance</a></li>
+</ul>
 
             </div>
         </div>

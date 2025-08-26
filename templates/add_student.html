@@ -15,71 +15,94 @@
             <h2 class="mb-4">Add Student</h2>
             <form method="POST">
                 
+                <!-- Student ID -->
+                <div class="mb-3">
+                    <label for="student_id" class="form-label">🎓 Student ID:</label>
+                    <input type="text" class="form-control" name="student_id" id="student_id"
+                           pattern="[A-Za-z0-9]{1,10}" maxlength="10" required
+                           title="Only letters and numbers allowed, max 10 characters">
+                </div>
 
-    <!-- Student ID -->
-    <div class="mb-3">
-    <label for="student_id" class="form-label">🎓 Student ID:</label>
-    <input type="text" class="form-control" name="student_id" id="student_id"
-           pattern="[A-Za-z0-9]{1,10}" maxlength="10" required
-           title="Only letters and numbers allowed, max 10 characters">
-</div>
+                <!-- Username -->
+                <div class="mb-3">
+                    <label for="username" class="form-label">👤 Username:</label>
+                    <input type="text" class="form-control" name="username" id="username"
+                           maxlength="15" required
+                           title="Username (letters/numbers, max 15 characters)">
+                </div>
 
+                <!-- Name -->
+                <div class="form-group">
+                    <label for="name">📝 Full Name:</label>
+                    <input type="text" class="form-control" name="name" id="name" required>
+                </div>
 
-    <!-- Name -->
-    <div class="form-group">
-        <label for="name">Name:</label>
-        <input type="text" class="form-control" name="name" id="name" required>
-    </div>
-
-    <!-- Email -->
-    <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" class="form-control" name="email" id="email" required>
-    </div>
-
-    <!-- Course -->
-    <div class="form-group">
-        <label for="course">Course:</label>
-        <select class="form-control" name="course" id="course" required>
-            <option value="" disabled selected>-- Select Course --</option>
-            <option value="B.Tech - CSE">B.Tech - CSE</option>
-            <option value="B.Tech - AI&ML">B.Tech - AI&ML</option>
-            <option value="B.Tech - AI&DS">B.Tech - AI&DS</option>
-            <option value="B.Tech - CYBER SECURITY">B.Tech - CYBER SECURITY</option>
-            <option value="B.Tech - ECE">B.Tech - ECE</option>
-            <option value="B.Tech - EEE">B.Tech - EEE</option>
-            <option value="B.Tech - Mechanical">B.Tech - Mechanical</option>
-            <option value="B.Tech - Civil">B.Tech - Civil</option>
-            <option value="B.Tech - IT">B.Tech - IT</option>
-            <option value="B.Tech - NAME">B.Tech - NAME</option>
-            
-        </select>
-    </div>
-
-    <!-- Date -->
-    <div class="form-group">
-        <label for="date">Enrollment Date:</label>
-        <input type="date" class="form-control" name="date" id="date" required>
-    </div>
-    
-
-    <!-- Buttons -->
-    <button type="submit" class="btn btn-primary">💾 Save</button>
-    
-
-</form>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const studentIdInput = document.getElementById('student_id');
-    studentIdInput.addEventListener('input', function () {
-        // Keep only letters and numbers, max 10 characters
-        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-    });
-});
-</script>
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="email">📧 Email:</label>
+                    <input type="email" class="form-control" name="email" id="email" required>
+                </div>
+                <div class="form-group">
+                   <label for="year">Year:</label>
+<select name="year" id="year" required>
+    <option value="">-- Select Year --</option>
+    <option value="1/4">I/IV  </option>
+    <option value="2/4">II/IV  </option>
+    <option value="3/4">III/IV  </option>
+    <option value="4/4">IV/IV  </option>
+</select><br>
 
 
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">⬅️ Back to Dashboard</a>
+                </div>
+
+                <!-- Course -->
+                <div class="form-group">
+                    <label for="course">📚 Course:</label>
+                    <select class="form-control" name="course" id="course" required>
+                        <option value="" disabled selected>-- Select Course --</option>
+                        <option value="B.Tech - CSE">B.Tech - CSE</option>
+                        <option value="B.Tech - AI&ML">B.Tech - AI&ML</option>
+                        <option value="B.Tech - AI&DS">B.Tech - AI&DS</option>
+                        <option value="B.Tech - CYBER SECURITY">B.Tech - Cyber Security</option>
+                        <option value="B.Tech - ECE">B.Tech - ECE</option>
+                        <option value="B.Tech - EEE">B.Tech - EEE</option>
+                        <option value="B.Tech - Mechanical">B.Tech - Mechanical</option>
+                        <option value="B.Tech - Civil">B.Tech - Civil</option>
+                        <option value="B.Tech - IT">B.Tech - IT</option>
+                        <option value="B.Tech - NAME">B.Tech - NAME</option>
+                    </select>
+                </div>
+
+                <!-- Date -->
+                <div class="form-group">
+                    <label for="date">📅 Enrollment Date:</label>
+                    <input type="date" class="form-control" name="date" id="date" required>
+                </div>
+
+                <!-- Buttons -->
+                <button type="submit" class="btn btn-primary">💾 Save</button>
+            </form>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const studentIdInput = document.getElementById('student_id');
+                    const usernameInput = document.getElementById('username');
+
+                    studentIdInput.addEventListener('input', function () {
+                        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+                        // Auto-fill username if empty
+                        if (!usernameInput.value) {
+                            usernameInput.value = this.value;
+                        }
+                    });
+
+                    usernameInput.addEventListener('input', function () {
+                        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
+                    });
+                });
+            </script>
+
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary mt-3">⬅️ Back to Dashboard</a>
         </div>
     </div>
 
