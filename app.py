@@ -44,7 +44,7 @@ from flask import g
 def get_db():
     if 'db' not in g:
         g.db = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "maglev.proxy.rlwy.net"),
+            host=os.getenv("DB_HOST", "metro.proxy.rlwy.net"),
             port=int(os.getenv("DB_PORT", 12600)),
             user=os.getenv("DB_USER", "root"),
             password=os.getenv("DB_PASS", "XfSjxukNhBBfCBJgIlXUTQVHazTrBfwc"),
