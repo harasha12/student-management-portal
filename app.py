@@ -39,13 +39,16 @@ app.permanent_session_lifetime = timedelta(minutes=20)
 # ---------------------
 # MySQL connection
 # ---------------------
+from flask import g
+
 def get_db():
     if 'db' not in g:
         g.db = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Phani@2005$",
-            database="student_db",
+            host=os.getenv("DB_HOST", "maglev.proxy.rlwy.net"),
+            port=int(os.getenv("DB_PORT", 12600)),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASS", "XfSjxukNhBBfCBJgIlXUTQVHazTrBfwc"),
+            database=os.getenv("DB_NAME", "railway"),
             autocommit=False
         )
     return g.db
@@ -67,6 +70,17 @@ def read_pdf_text(filepath):
             page_text = page.extract_text() or ''
             text += page_text
     return text
+@app.route("/test_db")
+def test_db():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM students LIMIT 5")
+        rows = cursor.fetchall()
+        cursor.close()
+        return {"success": True, "data": rows}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # ---------------------
 # Initialize DB (creates tables if not exist)
