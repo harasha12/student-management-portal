@@ -12,7 +12,7 @@
 
     <div class="container fade-in">
         <div class="container shadow p-4 rounded bg-white text-center">
-            <h2>🎉 HI Welcome, {{ user }}!</h2>
+            <h2>🎉  Welcome, {{ user }}!</h2>
             <p class="mt-3">Choose an action below:</p>
             <div class="mt-4">
     <a href="{{ url_for('add_student') }}" class="btn btn-primary m-2">➕ Add Student</a>
@@ -25,6 +25,8 @@
 <a href="{{ url_for('view_internal_marks') }}" class="btn btn-dark m-2">📖 View internal marks</a>
 <a href="{{ url_for('send_message') }}" class="btn btn-outline-primary m-2">✉️ Send Message</a>
 <a href="{{ url_for('inbox') }}" class="btn btn-outline-success m-2">📥 Inbox</a>
+<a href="{{ url_for('upload_notes') }}" class="btn btn-outline-warning m-2">📂 Upload Notes</a>
+<a href="{{ url_for('view_notes') }}" class="btn btn-outline-dark m-2">📖 View Notes</a>
 
 <a href="{{ url_for('logout') }}" class="btn btn-danger m-2">🚪 Logout</a>
 

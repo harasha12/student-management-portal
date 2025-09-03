@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Notes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      background: url("{{ url_for('static', filename='college_bg.jpg') }}") no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .upload-card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      padding: 2rem;
+      max-width: 600px;
+      margin: 80px auto;
+    }
+    .form-control, .btn {
+      border-radius: 12px;
+    }
+    h3 {
+      font-weight: 600;
+      color: #333;
+    }
+    .btn-gradient {
+      background: linear-gradient(45deg, #007bff, #00c6ff);
+      color: #fff;
+      border: none;
+    }
+    .btn-gradient:hover {
+      background: linear-gradient(45deg, #0056b3, #0096c7);
+    }
+    .file-name {
+      font-size: 0.9rem;
+      margin-top: 5px;
+      color: #444;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="upload-card shadow-lg">
+    <h3 class="text-center mb-4">📤 Upload Notes</h3>
+
+    <!-- Flash Message -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-success text-center">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data">
+      <!-- Subject -->
+      <div class="form-group">
+        <label>Subject Name</label>
+        <input type="text" name="subject" class="form-control" placeholder="Enter subject" required>
+      </div>
+<!-- Year -->
+<div class="form-group">
+  <label>Year</label>
+  <select name="year" class="form-control" required>
+    <option value="">Select Year</option>
+    <option value="1">1st Year</option>
+    <option value="2">2nd Year</option>
+    <option value="3">3rd Year</option>
+    <option value="4">4th Year</option>
+  </select>
+</div>
+
+      <!-- Department -->
+      <div class="form-group">
+        <label>Department</label>
+        <select name="department" class="form-control" required>
+          <option value="">Select Department</option>
+          <option value="CSE">CSE</option>
+          <option value="ECE">ECE</option>
+          <option value="EEE">EEE</option>
+          <option value="MECH">MECH</option>
+          <option value="CIVIL">CIVIL</option>
+        </select>
+      </div>
+
+      <!-- Title -->
+      <div class="form-group">
+        <label>Notes Title</label>
+        <input type="text" name="title" class="form-control" placeholder="e.g., Unit 2 - OS Concepts" required>
+      </div>
+
+      <!-- File Upload -->
+      <div class="form-group">
+        <label>Upload File (PDF, DOC, PPT, etc.)</label>
+        <input type="file" name="file" class="form-control-file" required onchange="showFileName(this)">
+        <div id="file-name" class="file-name"></div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="d-flex justify-content-between mt-4">
+        <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-outline-secondary">⬅ Back</a>
+        <button type="submit" class="btn btn-gradient px-4">Upload</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function showFileName(input) {
+      let fileName = input.files[0]?.name || "";
+      document.getElementById("file-name").textContent = fileName ? "Selected File: " + fileName : "";
+    }
+  </script>
+
+</body>
+</html>

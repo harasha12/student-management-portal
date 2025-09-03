@@ -1,4 +1,5 @@
 # app.py (UPDATED for MySQL Workbench)
+
 import random
 import html
 import re
@@ -1597,8 +1598,116 @@ def debug_data(table):
     finally:
         cursor.close()
         db.close()
+from flask import (
+    Flask, render_template, request, redirect,
+    url_for, flash, session
+)
+from werkzeug.utils import secure_filename
+import os
+from datetime import datetime
 
-# ---------------------
+# --- Upload Notes ---
+@app.route('/upload_notes', methods=['GET', 'POST'])
+def upload_notes():
+    if 'role' not in session or session['role'] != 'teacher':
+        flash("⚠ Please login as a teacher first.", "danger")
+        return redirect(url_for('choose_login'))
+
+    if request.method == 'POST':
+        subject = request.form.get('subject', '').strip()
+        department = request.form.get('department', '').strip()
+        year = request.form.get('year', '').strip()
+        title = request.form.get('title', '').strip()
+        file = request.files.get('file')
+
+        # --- Validation ---
+        if not subject or not department or not year or not title or not file:
+            flash("❌ All fields are required.", "danger")
+            return redirect(request.url)
+
+        try:
+            year = int(year)
+        except ValueError:
+            flash("❌ Year must be a valid number.", "danger")
+            return redirect(request.url)
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            try:
+                # Save file
+                file.save(filepath)
+
+                # Save DB record
+                db = get_db()
+                cur = db.cursor(dictionary=True)
+                cur.execute("""
+                    INSERT INTO notes 
+                        (subject, department, year, title, filename, uploaded_by, uploaded_on) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (subject, department, year, title, filename, session['username'], datetime.now()))
+                db.commit()
+
+                flash(f"✅ '{title}' uploaded successfully!", "success")
+
+            except Exception as e:
+                db.rollback()
+                flash(f"❌ Error uploading notes: {e}", "danger")
+
+            finally:
+                cur.close()
+
+            return redirect(url_for('upload_notes'))
+
+        else:
+            flash("❌ Invalid file type. Allowed: pdf, docx, pptx, txt", "danger")
+            return redirect(request.url)
+
+    return render_template('upload_notes.html')
+
+
+# --- View Notes (for Students) ---
+@app.route('/view_notes')
+def view_notes():
+    if 'role' not in session or session['role'] != 'student':
+        flash("⚠ Please login as a student first.", "danger")
+        return redirect(url_for('choose_login'))
+
+    dept = request.args.get('department', '').strip()
+    year = request.args.get('year', '').strip()
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    notes = []
+
+    try:
+        query = "SELECT * FROM notes WHERE 1=1"
+        params = []
+
+        if dept:
+            query += " AND department = %s"
+            params.append(dept)
+        if year:
+            try:
+                year = int(year)
+                query += " AND year = %s"
+                params.append(year)
+            except ValueError:
+                flash("❌ Year filter must be a number.", "danger")
+
+        query += " ORDER BY uploaded_on DESC"
+        cur.execute(query, params)
+        notes = cur.fetchall()
+
+    except Exception as e:
+        flash(f"❌ Error fetching notes: {e}", "danger")
+
+    finally:
+        cur.close()
+
+    return render_template('view_notes.html', notes=notes)
+
 # Root
 # ---------------------
 @app.route('/')
