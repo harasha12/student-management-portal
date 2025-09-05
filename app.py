@@ -1154,49 +1154,42 @@ def view_internal_marks():
 
         # ----------------- Teacher View -----------------
         elif role == 'teacher':
-            teacher_username = session['username']
-            student_id = request.form.get('student_id') if request.method == 'POST' else None
-            subject = request.form.get('subject') if request.method == 'POST' else None
-            semester = request.form.get('semester') if request.method == 'POST' else None
+    teacher_username = session['username']
+    student_id = request.form.get('student_id') if request.method == 'POST' else None
+    subject = request.form.get('subject') if request.method == 'POST' else None
+    semester = request.form.get('semester') if request.method == 'POST' else None
 
-            query = '''
-                SELECT im.student_id, s.name AS student_name, im.subject, im.marks, im.semester
-                FROM internal_marks im
-                JOIN students s ON im.student_id = s.student_id
-                WHERE s.added_by = %s
-            '''
-            params = [teacher_username]
+    query = '''
+        SELECT im.student_id, s.name AS student_name, im.subject, im.marks, im.semester
+        FROM internal_marks im
+        JOIN students s ON im.student_id = s.student_id
+        WHERE 1=1
+    '''
+    params = []
 
-            if student_id:
-                query += ' AND im.student_id = %s'
-                params.append(student_id)
-            if subject:
-                query += ' AND im.subject LIKE %s'
-                params.append(f'%{subject}%')
-            if semester and semester.isdigit():
-                query += ' AND im.semester = %s'
-                params.append(int(semester))
+    if student_id:
+        query += ' AND im.student_id = %s'
+        params.append(student_id)
+    if subject:
+        query += ' AND im.subject LIKE %s'
+        params.append(f'%{subject}%')
+    if semester and semester.isdigit():
+        query += ' AND im.semester = %s'
+        params.append(int(semester))
 
-            cursor.execute(query, tuple(params))
-            records = cursor.fetchall()
+    cursor.execute(query, tuple(params))
+    records = cursor.fetchall()
 
-            # Dropdown list of teacher's students
-            cursor.execute("SELECT student_id, name FROM students WHERE added_by = %s", (teacher_username,))
-            students = cursor.fetchall()
+    # Dropdown list of all students
+    cursor.execute("SELECT student_id, name FROM students")
+    students = cursor.fetchall()
 
-            return render_template(
-                'view_internal_marks.html',
-                records=records,
-                students=students,
-                selected_semester=semester
-            )
-
-        else:
-            return redirect(url_for('choose_login'))
-
-    finally:
-        cursor.close()
-
+    return render_template(
+        'view_internal_marks.html',
+        records=records,
+        students=students,
+        selected_semester=semester
+    )
 
 
 @app.route('/delete_internal_marks/<student_id>/<subject>/<semester>')
