@@ -3,37 +3,65 @@
 <head>
     <title>Enter Internal Marks</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
-<body>
-    <h2>Enter Internal Marks</h2>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="card shadow p-4">
+            <h2 class="text-center mb-4">📘 Enter Internal Marks</h2>
 
-    <form method="POST">
-        <!-- Student ID dropdown -->
-        <label for="student_id">Student ID:</label>
-        <select id="student_id" name="student_id" onchange="fillStudentName()" required>
-            <option value="">Select ID</option>
-            {% for student in students %}
-                <option value="{{ student['id'] }}" data-name="{{ student['name'] }}">{{ student['id'] }}</option>
-            {% endfor %}
-        </select><br>
+            <form method="POST">
+                <!-- Student ID dropdown -->
+                <div class="form-group">
+                    <label for="student_id">Select Student:</label>
+                    <select id="student_id" name="student_id" class="form-control" onchange="fillStudentName()" required>
+                        <option value="">-- Select Student ID --</option>
+                        {% for student in students %}
+                            <option value="{{ student['student_id'] }}" data-name="{{ student['name'] }}">
+                                {{ student['student_id'] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-        <!-- Student name display -->
-        <label for="student_name">Student Name:</label>
-        <input type="text" id="student_name" name="student_name" readonly><br>
+                <!-- Student name display -->
+                <div class="form-group">
+                    <label for="student_name">Student Name:</label>
+                    <input type="text" id="student_name" name="student_name" class="form-control" readonly>
+                </div>
 
-        <!-- Subject -->
-        <label for="subject">Subject:</label>
-        <input type="text" id="subject" name="subject" required><br>
+                <!-- Semester -->
+                <div class="form-group">
+                    <label for="semester">Semester:</label>
+                    <select id="semester" name="semester" class="form-control" required>
+                        <option value="">-- Select Semester --</option>
+                        {% for i in range(1, 9) %}
+                            <option value="{{ i }}">Semester {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-        <!-- Marks -->
-        <label for="marks">Marks:</label>
-        <input type="number" id="marks" name="marks" min="0" max="100" required><br>
+                <!-- Subject -->
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" name="subject" class="form-control" required>
+                </div>
 
-        
-        <!-- Submit -->
-        <input type="submit" value="Submit">
-    </form>
+                <!-- Marks -->
+                <div class="form-group">
+                    <label for="marks">Marks:</label>
+                    <input type="number" id="marks" name="marks" class="form-control" min="0" max="100" required>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn btn-success w-100">Submit Marks</button>
+            </form>
+
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary w-100 mt-3">⬅ Back to Dashboard</a>
+        </div>
+    </div>
 
     <!-- Fill student name from selected ID -->
     <script>
@@ -41,11 +69,8 @@
             const select = document.getElementById('student_id');
             const selectedOption = select.options[select.selectedIndex];
             const name = selectedOption.getAttribute('data-name');
-            document.getElementById('student_name').value = name;
+            document.getElementById('student_name').value = name || "";
         }
     </script>
-
-    <br>
-    <a href="/"><button>Back to Dashboard</button></a>
 </body>
 </html>

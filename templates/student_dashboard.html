@@ -11,7 +11,7 @@
 <div class="container fade-in mt-4">
     <div class="card shadow p-4 bg-white">
         <!-- Display student's name and username -->
-        <h2 class="text-center">🎓 Welcome, {{ user.name }} ({{ user.username }})</h2>
+        <h2 class="text-center">🎓 Welcome, {{ student.name }} ({{ student.student_id }})</h2>
 
         <div class="mt-4 text-center mb-4">
             <a href="{{ url_for('student_view_attendance') }}" class="btn btn-info m-2">📅 View Attendance</a>
@@ -24,26 +24,36 @@
         </div>
 
         <!-- Grades Table -->
-        <h4> Internal Grades</h4>
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th>Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for g in records %}
-<tr>
-    <td>{{ g.subject }}</td>
-    <td>{{ g.marks }}</td>
-</tr>
-{% else %}
-<tr><td colspan="2">No grades found</td></tr>
-{% endfor %}
+        <!-- Grades Table with Semester Dropdown -->
+<h4>📖 Internal Grades</h4>
 
-            </tbody>
-        </table>
+<form method="get" action="{{ url_for('student_dashboard') }}" class="form-inline mb-3">
+    <label for="semester" class="mr-2">Select Semester:</label>
+    <select name="semester" id="semester" class="form-control mr-2" onchange="this.form.submit()">
+        {% for sem in semesters %}
+            <option value="{{ sem }}" {% if sem == selected_semester %}selected{% endif %}>Semester {{ sem }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Subject</th>
+            <th>Marks</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for g in marks %}
+            <tr>
+                <td>{{ g.subject }}</td>
+                <td>{{ g.marks }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="2">No grades found for Semester {{ selected_semester }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
 
         <!-- Attendance Summary -->
         <h4>📊 Attendance Summary (Last 6 Months)</h4>

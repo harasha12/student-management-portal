@@ -6,13 +6,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
-<body>
+<body class="bg-light">
 <div class="container mt-4">
     <div class="card shadow p-4 bg-white">
         <h2 class="text-center">📖 Internal Marks</h2>
 
+        <!-- Semester Selection Dropdown -->
+        <form method="GET" class="mb-3 text-center">
+            <label for="semester" class="mr-2"><strong>Select Semester:</strong></label>
+            <select name="semester" id="semester" class="form-control d-inline-block w-auto" onchange="this.form.submit()">
+                {% for sem in range(1, 9) %}
+                    <option value="{{ sem }}" {% if sem == selected_semester %}selected{% endif %}>
+                        Semester {{ sem }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <!-- Marks Table -->
         <table class="table table-bordered table-striped mt-3">
-            <thead>
+            <thead class="thead-dark">
                 <tr>
                     <th>Subject</th>
                     <th>Marks</th>
@@ -25,7 +38,7 @@
                     <td>{{ g.marks }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="2">No grades found</td></tr>
+                <tr><td colspan="2" class="text-center">No grades found for this semester</td></tr>
                 {% endfor %}
             </tbody>
         </table>

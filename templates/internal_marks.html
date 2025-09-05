@@ -8,39 +8,56 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-    <div class="container fade-in">
-        <h2>📘 Enter Internal Marks</h2>
-        <form method="POST">
-            <div class="form-group">
-                <label>Select Student:</label>
-                <select name="student_id" class="form-control" required>
-                    {% for student in students %}
-                        <option value="{{ student.student_id }}">{{ student.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            {% if error %}
-                <p style="color: red;">{{ error }}</p>
-            {% endif %}
-
-            {% for i in range(1, 6) %}
-            <div class="form-row">
-                <div class="form-group col-md-6">
-                    <label>Subject {{ i }}:</label>
-                    <input type="text" class="form-control" name="subject_{{ i }}">
+    <div class="container fade-in mt-4">
+        <div class="card shadow p-4">
+            <h2 class="text-center">📘 Enter Internal Marks</h2>
+            
+            <form method="POST">
+                <!-- Student Selection -->
+                <div class="form-group">
+                    <label for="student_id">Select Student:</label>
+                    <select name="student_id" id="student_id" class="form-control" required>
+                        {% for student in students %}
+                            <option value="{{ student.student_id }}">{{ student.name }} ({{ student.student_id }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="form-group col-md-6">
-                    <label>Marks:</label>
-                    <input type="text" class="form-control" name="marks_{{ i }}">
+
+                <!-- Semester Selection -->
+                <div class="form-group">
+                    <label for="semester">Select Semester:</label>
+                    <select name="semester" id="semester" class="form-control" required>
+                        <option value="">-- Choose Semester --</option>
+                        {% for i in range(1, 9) %}
+                            <option value="{{ i }}">Semester {{ i }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </div>
-            {% endfor %}
 
-            <button type="submit" class="btn btn-primary">Submit Internal Marks</button>
-        </form>
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
 
-        <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary mt-3">⬅ Back to Dashboard</a>
+                <!-- Subject & Marks Entry -->
+                {% for i in range(1, 6) %}
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="subject_{{ i }}">Subject {{ i }}:</label>
+                        <input type="text" class="form-control" name="subject_{{ i }}" id="subject_{{ i }}">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="marks_{{ i }}">Marks:</label>
+                        <input type="number" class="form-control" name="marks_{{ i }}" id="marks_{{ i }}">
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Submit -->
+                <button type="submit" class="btn btn-success w-100">Submit Internal Marks</button>
+            </form>
+
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary mt-3 w-100">⬅ Back to Dashboard</a>
+        </div>
     </div>
 </body>
 </html>

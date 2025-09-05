@@ -2,20 +2,45 @@
 <html>
 <head>
     <title>Edit Internal Marks</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <h2 style="text-align: center;">✏️ Edit Internal Marks</h2>
-    <form method="POST" style="text-align: center;">
-        <p><strong>Student ID:</strong> {{ student_id }}</p>
-        <p><strong>Subject:</strong> {{ subject }}</p>
-        <label>New Marks:</label>
-        <input type="number" name="marks" value="{{ marks }}" required><br><br>
-        <input type="submit" value="Update Marks">
-    </form>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <div style="text-align: center; margin-top: 20px;">
-        <a href="{{ url_for('view_internal_marks') }}">⬅️ Back to Marks</a>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="card shadow p-4">
+            <h2 class="text-center mb-4">✏️ Edit Internal Marks</h2>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label><strong>Student ID:</strong></label>
+                    <input type="text" class="form-control" value="{{ student_id }}" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label><strong>Subject:</strong></label>
+                    <input type="text" class="form-control" value="{{ subject }}" readonly>
+                </div>
+
+                <!-- Semester (readonly for now) -->
+                {% if semester %}
+                <div class="form-group">
+                    <label><strong>Semester:</strong></label>
+                    <input type="text" class="form-control" value="Semester {{ semester }}" readonly>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="marks">New Marks:</label>
+                    <input type="number" class="form-control" id="marks" name="marks" value="{{ marks }}" min="0" max="100" required>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">💾 Update Marks</button>
+            </form>
+
+            <a href="{{ url_for('view_internal_marks') }}" class="btn btn-secondary w-100 mt-3">⬅ Back to Marks</a>
+        </div>
     </div>
 </body>
 </html>

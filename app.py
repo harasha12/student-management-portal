@@ -195,8 +195,10 @@ def validate_password(password):
 @app.route('/register_student', methods=['GET', 'POST'])
 def register_student():
     error, success = None, None
+    username_from_url = request.args.get("username", "").strip()  # redirect case
+
     if request.method == 'POST':
-        username = html.escape(request.form.get('username', '')).strip()
+        username = html.escape(request.form.get('username', username_from_url)).strip()
         email = html.escape(request.form.get('email', '')).strip()
         password = request.form.get('password', '')
 
@@ -210,25 +212,30 @@ def register_student():
             cursor = db.cursor(dictionary=True)
             try:
                 hashed = generate_password_hash(password)
-                cursor.execute("""
-                    INSERT INTO users (username, email, password, role)
-                    VALUES (%s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE email = VALUES(email), password = VALUES(password), role = VALUES(role)
-                """, (username, email, hashed, 'student'))
 
-                db.commit()
-                success = "Student registered successfully!"
-                return redirect(url_for('student_login'))
-            except mysql.connector.IntegrityError:
-                db.rollback()
-                error = "Username already exists."
-            except Exception as e:
-                db.rollback()
-                error = f"Error registering student: {e}"
+                # ✅ Only update existing student
+                cursor.execute("""
+                    UPDATE users
+                    SET email = %s, password = %s, role = 'student'
+                    WHERE username = %s AND role = 'student'
+                """, (email, hashed, username))
+
+                if cursor.rowcount == 0:
+                    error = "⚠️ Student not found. Contact teacher."
+                else:
+                    db.commit()
+                    flash("✅ Password set successfully! Please login.", "success")
+                    return redirect(url_for('student_login'))
             finally:
                 cursor.close()
 
-    return render_template('register.html', error=error, success=success, role='student')
+    return render_template(
+        'register.html',
+        error=error,
+        success=success,
+        role='student',
+        username=username_from_url
+    )
 
 
 @app.route('/register_teacher', methods=['GET', 'POST'])
@@ -331,10 +338,10 @@ def student_login():
 
             if not user:
                 error = "⚠️ Student not found. Contact teacher."
-            elif not user.get("password"):
-                # ✅ No password yet → ask student to register
+            elif not user.get("password"):  
+                # ✅ First-time login → redirect to register
                 flash("⚠️ First-time login detected. Please register and set a password.", "warning")
-                return redirect(url_for("student_register", username=user["username"]))
+                return redirect(url_for("register_student", username=user["username"]))
             elif check_password_hash(user["password"], password):
                 # ✅ Success login
                 session['user'] = user['username']
@@ -396,27 +403,41 @@ def teacher_dashboard():
 
 
 # ---------------- STUDENT DASHBOARD ----------------
-@app.route('/student_dashboard')
+@app.route('/student_dashboard', methods=['GET', 'POST'])
 def student_dashboard():
     if 'user' not in session or session.get('role') != 'student':
         return redirect(url_for('choose_login'))
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    try:
-        student_id = session['user']  # ✅ student_id stored in session
 
-        # ✅ Student details from students table
+    try:
+        student_id = session['user']
+
+        # ✅ Fetch student details
         cursor.execute("SELECT * FROM students WHERE student_id = %s", (student_id,))
         student = cursor.fetchone()
         if not student:
             return "Unauthorized or student not found", 403
 
-        # ✅ Internal marks
-        cursor.execute("SELECT subject, marks FROM internal_marks WHERE student_id = %s", (student_id,))
+        # ✅ Selected semester (default = 1)
+        semester = request.args.get("semester", 1, type=int)
+
+        # ✅ Internal marks for selected semester
+        cursor.execute("""
+            SELECT subject, marks, semester 
+            FROM internal_marks 
+            WHERE student_id = %s AND semester = %s
+        """, (student_id, semester))
         marks = cursor.fetchall()
 
-        # ✅ Attendance (last 6 months, using status column)
+        # ✅ Fetch distinct semesters available for dropdown
+        cursor.execute("""
+            SELECT DISTINCT semester FROM internal_marks WHERE student_id = %s ORDER BY semester
+        """, (student_id,))
+        semesters = [row['semester'] for row in cursor.fetchall()]
+
+        # ✅ Attendance (last 6 months)
         six_months_ago = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
         cursor.execute("""
             SELECT date, status 
@@ -426,7 +447,6 @@ def student_dashboard():
         """, (student_id, six_months_ago))
         records = cursor.fetchall()
 
-        # Attendance summary
         total_present = sum(1 for r in records if r['status'] and r['status'].lower() == 'present')
         total_absent = sum(1 for r in records if r['status'] and r['status'].lower() == 'absent')
         total_days = len(records)
@@ -435,12 +455,15 @@ def student_dashboard():
         return render_template('student_dashboard.html',
                                student=student,
                                marks=marks,
+                               semesters=semesters,
+                               selected_semester=semester,
                                records=records,
                                total_present=total_present,
                                total_absent=total_absent,
                                attendance_percentage=round(attendance_percentage, 2))
     finally:
         cursor.close()
+
 #--------------------
 # Add / View / Edit / Delete Students
 # ---------------------
@@ -1015,28 +1038,36 @@ def reset_password():
 # ---------------------
 # Internal marks
 # ---------------------
+# ---------------- INTERNAL MARKS ROUTES ---------------- #
+
 @app.route('/internal_marks', methods=['GET', 'POST'])
 def internal_marks():
+    # ✅ Only teachers can access
     if 'username' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
+
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute("SELECT * FROM students")
         students = cursor.fetchall()
         error = None
+
         if request.method == 'POST':
             student_id = request.form.get('student_id')
+            semester = request.form.get('semester')
+
             try:
                 c2 = db.cursor()
                 try:
-                    for i in range(1, 6):
+                    for i in range(1, 6):  # 5 subjects per upload
                         subject = request.form.get(f'subject_{i}')
                         marks = request.form.get(f'marks_{i}')
                         if subject and marks:
                             c2.execute(
-                                "INSERT INTO internal_marks (student_id, subject, marks, entered_by) VALUES (%s, %s, %s, %s)",
-                                (student_id, subject, marks, session['username'])
+                                "INSERT INTO internal_marks (student_id, subject, marks, semester, entered_by) "
+                                "VALUES (%s, %s, %s, %s, %s)",
+                                (student_id, subject, marks, semester, session['username'])
                             )
                     db.commit()
                     return redirect(url_for('view_internal_marks'))
@@ -1044,7 +1075,8 @@ def internal_marks():
                     c2.close()
             except mysql.connector.IntegrityError as e:
                 db.rollback()
-                error = "Duplicate subject entry or other error: " + str(e)
+                error = "Duplicate subject/semester entry or error: " + str(e)
+
         return render_template('internal_marks.html', students=students, error=error)
     finally:
         cursor.close()
@@ -1054,32 +1086,39 @@ def internal_marks():
 def enter_grade():
     if 'username' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
+
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute("SELECT id, name, student_id FROM students")
         students = cursor.fetchall()
+
         if request.method == 'POST':
             student_id = request.form.get('student_id')
             subject = request.form.get('subject')
             marks = request.form.get('marks')
+            semester = request.form.get('semester')
+
             c2 = db.cursor()
             try:
                 c2.execute(
-                    "INSERT INTO internal_marks (student_id, subject, marks, entered_by) VALUES (%s,%s,%s,%s)",
-                    (student_id, subject, marks, session['username'])
+                    "INSERT INTO internal_marks (student_id, subject, marks, semester, entered_by) "
+                    "VALUES (%s,%s,%s,%s,%s)",
+                    (student_id, subject, marks, semester, session['username'])
                 )
                 db.commit()
                 return redirect(url_for('view_internal_marks'))
             finally:
                 c2.close()
+
         return render_template('enter_internal_marks.html', students=students)
     finally:
         cursor.close()
 
+
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
 def view_internal_marks():
-    if 'username' not in session:
+    if 'username' not in session and 'user' not in session:
         return redirect(url_for('choose_login'))
 
     db = get_db()
@@ -1089,73 +1128,69 @@ def view_internal_marks():
     try:
         # ----------------- Student View -----------------
         if role == 'student':
-            student_username = session.get('user')  # username = student_id in DB
-            if not student_username:
-                return "Student username not found in session", 400
+            student_id = session['user']  # ✅ fixed (student session)
+            semester = request.args.get('semester')  # dropdown filter
 
-            cursor.execute('''
-                SELECT im.student_id, s.name AS student_name, im.subject, im.marks
+            query = '''
+                SELECT im.student_id, s.name AS student_name, im.subject, im.marks, im.semester
                 FROM internal_marks im
                 JOIN students s ON im.student_id = s.student_id
                 WHERE im.student_id = %s
-            ''', (student_username,))
+            '''
+            params = [student_id]
+
+            if semester and semester.isdigit():
+                query += " AND im.semester = %s"
+                params.append(int(semester))
+
+            cursor.execute(query, tuple(params))
             records = cursor.fetchall()
 
-            if not records:
-                return render_template(
-                    'student_view_internalmarks.html',
-                    message="No internal marks found."
-                )
-
-            return render_template('student_view_internalmarks.html', records=records)
+            return render_template(
+                'student_view_internalmarks.html',
+                records=records,
+                selected_semester=semester
+            )
 
         # ----------------- Teacher View -----------------
         elif role == 'teacher':
-            teacher_username = session.get('username')
-            if not teacher_username:
-                return "Teacher username not found in session", 400
+            teacher_username = session['username']
+            student_id = request.form.get('student_id') if request.method == 'POST' else None
+            subject = request.form.get('subject') if request.method == 'POST' else None
+            semester = request.form.get('semester') if request.method == 'POST' else None
 
-            if request.method == 'POST':
-                student_id = request.form.get('student_id')
-                subject = request.form.get('subject')
+            query = '''
+                SELECT im.student_id, s.name AS student_name, im.subject, im.marks, im.semester
+                FROM internal_marks im
+                JOIN students s ON im.student_id = s.student_id
+                WHERE s.added_by = %s
+            '''
+            params = [teacher_username]
 
-                query = '''
-                    SELECT im.student_id, s.name AS student_name, im.subject, im.marks
-                    FROM internal_marks im
-                    JOIN students s ON im.student_id = s.student_id
-                    WHERE s.added_by = %s
-                '''
-                params = [teacher_username]
+            if student_id:
+                query += ' AND im.student_id = %s'
+                params.append(student_id)
+            if subject:
+                query += ' AND im.subject LIKE %s'
+                params.append(f'%{subject}%')
+            if semester and semester.isdigit():
+                query += ' AND im.semester = %s'
+                params.append(int(semester))
 
-                if student_id:
-                    query += ' AND im.student_id = %s'
-                    params.append(student_id)
+            cursor.execute(query, tuple(params))
+            records = cursor.fetchall()
 
-                if subject:
-                    query += ' AND im.subject LIKE %s'
-                    params.append(f'%{subject}%')
-
-                cursor.execute(query, tuple(params))
-                records = cursor.fetchall()
-            else:
-                cursor.execute('''
-                    SELECT im.student_id, s.name AS student_name, im.subject, im.marks
-                    FROM internal_marks im
-                    JOIN students s ON im.student_id = s.student_id
-                    WHERE s.added_by = %s
-                ''', (teacher_username,))
-                records = cursor.fetchall()
-
-            # Dropdown for teacher to select students they added
-            cursor.execute(
-                "SELECT student_id, name FROM students WHERE added_by = %s",
-                (teacher_username,)
-            )
+            # Dropdown list of teacher's students
+            cursor.execute("SELECT student_id, name FROM students WHERE added_by = %s", (teacher_username,))
             students = cursor.fetchall()
 
-            return render_template('view_internal_marks.html', records=records, students=students)
+            return render_template(
+                'view_internal_marks.html',
+                records=records,
+                students=students,
+                selected_semester=semester
+            )
 
-        # ----------------- Invalid Role -----------------
         else:
             return redirect(url_for('choose_login'))
 
@@ -1164,21 +1199,29 @@ def view_internal_marks():
 
 
 
-@app.route('/delete_internal_marks/<student_id>/<subject>')
-def delete_internal_marks(username, subject):
+@app.route('/delete_internal_marks/<student_id>/<subject>/<semester>')
+def delete_internal_marks(student_id, subject, semester):
     if 'username' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
+
     db = get_db()
     cursor = db.cursor()
     try:
-        cursor.execute("DELETE FROM internal_marks WHERE student_id = %s AND subject = %s", (username, subject))
+        cursor.execute(
+            "DELETE FROM internal_marks WHERE student_id = %s AND subject = %s AND semester = %s",
+            (student_id, subject, semester)
+        )
         db.commit()
     finally:
         cursor.close()
     return redirect(url_for('view_internal_marks'))
 
-@app.route('/edit_internal_marks/<student_id>/<subject>', methods=['GET', 'POST'])
-def edit_internal_marks(student_id, subject):
+
+@app.route('/edit_internal_marks/<student_id>/<subject>/<semester>', methods=['GET', 'POST'])
+def edit_internal_marks(student_id, subject, semester):
+    if 'username' not in session or session.get('role') != 'teacher':
+        return redirect(url_for('choose_login'))
+
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
@@ -1186,17 +1229,30 @@ def edit_internal_marks(student_id, subject):
             new_marks = request.form.get('marks')
             cur2 = db.cursor()
             try:
-                cur2.execute("UPDATE internal_marks SET marks = %s WHERE student_id = %s AND subject = %s",
-                             (new_marks, student_id, subject))
+                cur2.execute(
+                    "UPDATE internal_marks SET marks = %s WHERE student_id = %s AND subject = %s AND semester = %s",
+                    (new_marks, student_id, subject, semester)
+                )
                 db.commit()
                 return redirect(url_for('view_internal_marks'))
             finally:
                 cur2.close()
-        cursor.execute("SELECT * FROM internal_marks WHERE student_id = %s AND subject = %s", (student_id, subject))
+
+        cursor.execute(
+            "SELECT * FROM internal_marks WHERE student_id = %s AND subject = %s AND semester = %s",
+            (student_id, subject, semester)
+        )
         row = cursor.fetchone()
-        return render_template('edit_internal_marks.html', student_id=student_id, subject=subject, marks=(row.get('marks') if row else None))
+        marks = row['marks'] if row else None
+
+        return render_template('edit_internal_marks.html',
+                               student_id=student_id,
+                               subject=subject,
+                               semester=semester,
+                               marks=marks)
     finally:
         cursor.close()
+
 
 # ---------------------
 # Messaging (send/inbox)
@@ -1433,14 +1489,15 @@ def upload_file(datatype):
                             raw_username, name, branch = [str(col).strip() for col in row[:3]]
                             student_id = raw_username.replace("_", "")
                             email = f"{student_id.lower()}@gmail.com"
+                            default_pw = generate_password_hash(student_id)
 
                             cursor.execute(
                                 """
-                                INSERT INTO users (username, email, role)
-                                VALUES (%s, %s, 'student')
+                                INSERT INTO users (username, email, role,password)
+                                VALUES (%s, %s, 'student',%s)
                                 ON DUPLICATE KEY UPDATE email = VALUES(email), role = VALUES(role)
                                 """,
-                                (student_id, email)
+                                (student_id, email,default_pw)
                             )
 
                             cursor.execute(
