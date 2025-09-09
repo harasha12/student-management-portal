@@ -1083,7 +1083,7 @@ def internal_marks():
 
 
 @app.route('/enter_internal_marks', methods=['GET', 'POST'])
-def enter_grade():
+def enter_internal_marks():
     if 'username' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
 
@@ -1114,6 +1114,7 @@ def enter_grade():
         return render_template('enter_internal_marks.html', students=students)
     finally:
         cursor.close()
+
 
 
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
