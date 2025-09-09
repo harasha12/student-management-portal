@@ -126,7 +126,12 @@
     </table>
 
     <div style="text-align: center; margin-top: 20px;">
+    {% if session['role'] == 'teacher' %}
+        <a href="{{ url_for('teacher_dashboard') }}" class="back-btn">⬅️ Back to Dashboard</a>
+    {% else %}
         <a href="{{ url_for('student_dashboard') }}" class="back-btn">⬅️ Back to Dashboard</a>
-    </div>
+    {% endif %}
+</div>
+
 </body>
 </html>
