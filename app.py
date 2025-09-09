@@ -1128,7 +1128,7 @@ def view_internal_marks():
     try:
         # ----------------- Student View -----------------
         if role == 'student':
-            student_id = session['user']  # ✅ fixed (student session)
+            student_id = session['user']  # student_id stored in session
             semester = request.args.get('semester')  # dropdown filter
 
             query = '''
@@ -1147,14 +1147,17 @@ def view_internal_marks():
             records = cursor.fetchall()
 
             return render_template(
-                'student_view_internalmarks.html',
+                'view_internal_marks.html',
                 records=records,
+                students=None,   # student ki dropdown avasaram ledu
                 selected_semester=semester
             )
 
         # ----------------- Teacher View -----------------
         elif role == 'teacher':
             teacher_username = session['username']
+
+            # Filters from form
             student_id = request.form.get('student_id') if request.method == 'POST' else None
             subject = request.form.get('subject') if request.method == 'POST' else None
             semester = request.form.get('semester') if request.method == 'POST' else None
@@ -1163,25 +1166,28 @@ def view_internal_marks():
                 SELECT im.student_id, s.name AS student_name, im.subject, im.marks, im.semester
                 FROM internal_marks im
                 JOIN students s ON im.student_id = s.student_id
-                WHERE s.added_by = %s
             '''
-            params = [teacher_username]
+            params = []
+            conditions = []
 
             if student_id:
-                query += ' AND im.student_id = %s'
+                conditions.append('im.student_id = %s')
                 params.append(student_id)
             if subject:
-                query += ' AND im.subject LIKE %s'
+                conditions.append('im.subject LIKE %s')
                 params.append(f'%{subject}%')
             if semester and semester.isdigit():
-                query += ' AND im.semester = %s'
+                conditions.append('im.semester = %s')
                 params.append(int(semester))
+
+            if conditions:
+                query += ' WHERE ' + ' AND '.join(conditions)
 
             cursor.execute(query, tuple(params))
             records = cursor.fetchall()
 
-            # Dropdown list of teacher's students
-            cursor.execute("SELECT student_id, name FROM students WHERE added_by = %s", (teacher_username,))
+            # Dropdown list of all students
+            cursor.execute("SELECT student_id, name FROM students")
             students = cursor.fetchall()
 
             return render_template(
