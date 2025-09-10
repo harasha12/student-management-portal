@@ -701,7 +701,9 @@ def view_attendance():
         today = datetime.today().date()
         six_months_ago = today - timedelta(days=180)
 
+        # default date = today
         selected_date = today
+
         if request.method == 'POST':
             sd = request.form.get('selected_date')
             if sd:
@@ -710,21 +712,21 @@ def view_attendance():
                 except ValueError:
                     selected_date = today
 
-        # ✅ Fix join and remove added_by filter
+        # ✅ Fetch only attendance of the selected date (not all)
         cursor.execute('''
             SELECT s.student_id, s.name, a.date,
                    a.period1, a.period2, a.period3, a.period4, a.period5, a.period6, a.remarks
             FROM attendance a
             JOIN students s ON a.student_id = s.student_id
-            WHERE a.date BETWEEN %s AND %s
-            ORDER BY a.date DESC
-        ''', (six_months_ago, selected_date))
+            WHERE a.date = %s
+            ORDER BY a.student_id
+        ''', (selected_date,))
         records = cursor.fetchall()
 
-        # ✅ Attendance summary
+        # ✅ Attendance summary only for selected day
         total_present = total_absent = total_slots = 0
         for row in records:
-            for i in range(1, 7):
+            for i in range(1, 7):  # check each period
                 val = row.get(f'period{i}')
                 if val:
                     total_slots += 1
@@ -743,6 +745,7 @@ def view_attendance():
                                selected_date=selected_date)
     finally:
         cursor.close()
+
 
 @app.route('/student_view_attendance')
 def student_view_attendance():
