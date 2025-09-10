@@ -1205,6 +1205,7 @@ def view_internal_marks():
         cursor.close()
 
 
+
 @app.route('/delete_internal_marks/<student_id>/<subject>/<semester>')
 def delete_internal_marks(student_id, subject, semester):
     if 'username' not in session or session.get('role') != 'teacher':
