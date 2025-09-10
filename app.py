@@ -1269,46 +1269,56 @@ def edit_internal_marks(student_id, subject, semester):
 # ---------------------
 @app.route('/send_message', methods=['GET', 'POST'])
 def send_message():
-    if 'user' not in session:
+    if 'username' not in session and 'user' not in session:
         return redirect(url_for('choose_login'))
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
         role = session.get('role')
-        sender = session['user']
 
+        # ✅ Set sender & receiver list
         if role == 'teacher':
-            cursor.execute("SELECT username FROM users WHERE role = 'student'")
+            sender = session['username']   # teacher username
+            cursor.execute("SELECT student_id AS username FROM students")
+            users = cursor.fetchall()      # dict list with 'username'
+
         elif role == 'student':
+            sender = session['user']       # student_id
             cursor.execute("SELECT username FROM users WHERE role = 'teacher'")
+            users = cursor.fetchall()      # dict list with 'username'
+
         else:
             return redirect(url_for('choose_login'))
-
-        users = cursor.fetchall()
 
         if request.method == 'POST':
             receiver = request.form.get('receiver')
             message = request.form.get('message', '').strip()
 
             if not message:
-                return render_template('send_message.html', users=users, error="Message cannot be empty")
+                return render_template(
+                    'send_message.html',
+                    users=users,
+                    error="Message cannot be empty"
+                )
 
             cur2 = db.cursor()
             try:
                 cur2.execute(
-    "INSERT INTO messages (sender, receiver, message, sender_role) VALUES (%s, %s, %s, %s)",
-    (sender, receiver, message, role)
-)
-
+                    "INSERT INTO messages (sender, receiver, message, sender_role) VALUES (%s, %s, %s, %s)",
+                    (sender, receiver, message, role)
+                )
                 db.commit()
                 return redirect(url_for('inbox'))
             finally:
                 cur2.close()
 
         return render_template('send_message.html', users=users)
+
     finally:
         cursor.close()
+
+
 
 
 
