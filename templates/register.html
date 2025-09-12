@@ -12,21 +12,22 @@
         <h2 class="text-center mb-4">📝 {{ role.capitalize() }} Registration</h2>
 
         <form method="POST">
-            <!-- Username locked (readonly) -->
+            <!-- Username (editable now) -->
             <div class="mb-3">
                 <label for="username" class="form-label">👤 Username/UserId:</label>
                 <input type="text" class="form-control" id="username" name="username"
-                       value="{{ username }}" readonly>
+                       placeholder="Enter username" required>
             </div>
 
             <div class="mb-3">
                 <label for="email" class="form-label">📧 Email:</label>
-                <input type="email" class="form-control" name="email" required>
+                <input type="email" class="form-control" name="email" placeholder="Enter email" required>
             </div>
 
             <div class="mb-3">
                 <label for="password" class="form-label">🔐 Password:</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <input type="password" class="form-control" id="password" name="password"
+                       placeholder="Enter password" required>
             </div>
 
             <input type="hidden" name="role" value="{{ role }}">
