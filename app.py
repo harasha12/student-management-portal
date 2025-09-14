@@ -1784,6 +1784,166 @@ def view_notes():
         cur.close()
 
     return render_template('view_notes.html', notes=notes)
+    # --- imports you may need ---
+import os, uuid, qrcode, io
+from datetime import datetime, timedelta
+from flask import (
+    render_template, request, redirect, url_for,
+    session, flash, send_file, send_from_directory
+)
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# If not already set:
+# app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
+QR_DIR = os.path.join('static', 'qr')
+os.makedirs(QR_DIR, exist_ok=True)
+
+# ---------------- Others landing ----------------
+@app.route('/others')
+def others():
+    return render_template('others.html')
+
+# ---------------- Generate a fresh one-time QR ----------------
+@app.route('/generate_qr')
+def generate_qr():
+    """
+    Anyone can open 'Others' -> Outsider -> Generate QR.
+    Each call creates a brand-new one-time token with short expiry.
+    """
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    token = uuid.uuid4().hex  # 32 chars
+    expires_at = datetime.utcnow() + timedelta(minutes=10)  # adjust if you like
+
+    cur.execute(
+        "INSERT INTO qr_tokens (token, used, expires_at) VALUES (%s, %s, %s)",
+        (token, 0, expires_at)
+    )
+    db.commit()
+
+    # Build registration URL
+    reg_url = url_for('register_qr', token=token, _external=True)
+
+    # Generate QR image in memory
+    img = qrcode.make(reg_url)
+    qr_path = os.path.join(QR_DIR, f"{token}.png")
+    img.save(qr_path)
+
+    return render_template('show_qr.html', qr_filename=f"{token}.png", reg_url=reg_url, expires_at=expires_at)
+
+# ---------------- Register via QR (one-time) ----------------
+@app.route('/register_qr/<token>', methods=['GET', 'POST'])
+def register_qr(token):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # Fetch token
+    cur.execute("SELECT * FROM qr_tokens WHERE token=%s", (token,))
+    t = cur.fetchone()
+    if not t:
+        return render_template('qr_error.html', message="Invalid QR code.")
+    if t['used']:
+        return render_template('qr_error.html', message="This QR was already used.")
+    if t['expires_at'] and datetime.utcnow() > t['expires_at']:
+        return render_template('qr_error.html', message="This QR has expired.")
+
+    if request.method == 'POST':
+        student_id = request.form.get('student_id', '').strip()
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm  = request.form.get('confirm_password', '')
+        email    = request.form.get('email', '').strip()
+        branch   = request.form.get('branch', '').strip()
+
+        # Basic validation
+        if not all([student_id, username, password, confirm, email, branch]):
+            flash("All fields are required.", "danger")
+            return redirect(url_for('register_qr', token=token))
+        if password != confirm:
+            flash("Passwords do not match.", "danger")
+            return redirect(url_for('register_qr', token=token))
+
+        # Uniqueness check
+        cur.execute("SELECT id FROM users WHERE username=%s LIMIT 1", (username,))
+        if cur.fetchone():
+            flash("Username already taken. Choose another.", "danger")
+            return redirect(url_for('register_qr', token=token))
+
+        # Atomic single-use: mark token used only if insert succeeds
+        try:
+            hashed = generate_password_hash(password)
+            # Store outsider in users with role='outsider'
+            cur.execute("""
+                INSERT INTO users (student_id, username, password, email, branch, role)
+                VALUES (%s, %s, %s, %s, %s, 'outsider')
+            """, (student_id, username, hashed, email, branch))
+            db.commit()
+
+            # Mark token used
+            cur.execute("UPDATE qr_tokens SET used=1 WHERE token=%s", (token,))
+            db.commit()
+
+            flash("Registration successful! Please login as Outsider.", "success")
+            return redirect(url_for('outsider_login'))
+        except Exception as e:
+            db.rollback()
+            flash(f"Registration failed: {e}", "danger")
+            return redirect(url_for('register_qr', token=token))
+
+    return render_template('register_qr.html', token=token)
+
+# ---------------- Outsider Login ----------------
+@app.route('/outsider_login', methods=['GET', 'POST'])
+def outsider_login():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        if not username or not password:
+            error = "Please enter both username and password."
+        else:
+            db = get_db()
+            cur = db.cursor(dictionary=True)
+            try:
+                cur.execute("SELECT * FROM users WHERE username=%s AND role='outsider' LIMIT 1", (username,))
+                user = cur.fetchone()
+                if not user:
+                    error = "No outsider found with that username."
+                elif not check_password_hash(user['password'], password):
+                    error = "Incorrect password."
+                else:
+                    session.permanent = True
+                    session['username'] = user['username']
+                    session['role'] = 'outsider'
+                    return redirect(url_for('outsider_dashboard'))
+            except Exception as e:
+                error = f"Login error: {e}"
+
+    return render_template('outsider_login.html', error=error)
+
+# ---------------- Outsider Dashboard (View Notes only) ----------------
+@app.route('/outsider_dashboard')
+def outsider_dashboard():
+    if session.get('role') != 'outsider':
+        return redirect(url_for('choose_login'))
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    # Fetch the same notes faculty uploaded earlier
+    # Existing structure you shared: subject, department, year, title, filename, uploaded_by, uploaded_on
+    cur.execute("SELECT id, subject, department, year, title, filename, uploaded_on FROM notes ORDER BY uploaded_on DESC")
+    notes = cur.fetchall()
+    return render_template('outsider_dashboard.html', notes=notes)
+
+# -------------- Serve uploaded files safely (if you don't already) --------------
+# If you already have a route that serves notes, keep that. Otherwise:
+@app.route('/notes/file/<path:filename>')
+def notes_file(filename):
+    # Assumes UPLOAD_FOLDER points to 'static/uploads'
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
+
 
 # Root
 # ---------------------
