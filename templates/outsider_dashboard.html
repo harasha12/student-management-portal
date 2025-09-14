@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Outsider Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="page-fade-in">
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="m-0">View Notes</h2>
+      <div>
+        <span class="me-2">Hello, {{ session.get('username') }}</span>
+        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light">Logout</a>
+      </div>
+    </div>
+
+    {% if notes %}
+      <div class="row">
+        {% for n in notes %}
+          <div class="col-md-6 col-lg-4 mb-3">
+            <div class="dashboard-card h-100">
+              <div class="mb-1 text-uppercase small">{{ n.subject }} • {{ n.department }} • {{ n.year }}</div>
+              <div class="fw-bold mb-2">{{ n.title }}</div>
+              <a class="btn btn-gradient btn-sm" target="_blank"
+                 href="{{ url_for('notes_file', filename=n.filename) }}">
+                Open / Download
+              </a>
+              <div class="small mt-2 opacity-75">
+                Uploaded on: {{ n.uploaded_on }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info">No notes available yet.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
