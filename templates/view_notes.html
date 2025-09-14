@@ -2,6 +2,97 @@
 <html>
 <head>
     <title>View Notes</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f2f7fb;
+            color: #333;
+            margin: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #1f618d;
+        }
+
+        form {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        form label {
+            font-weight: bold;
+        }
+
+        form input {
+            padding: 5px 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        form button, form a {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        form button {
+            background-color: #1f618d;
+            color: white;
+        }
+
+        form a {
+            background-color: #d5d8dc;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #1f618d;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f4f6f7;
+        }
+
+        tr:hover {
+            background-color: #d6eaf8;
+        }
+
+        a.download-link {
+            color: #1f618d;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        a.download-link:hover {
+            text-decoration: underline;
+        }
+
+        p {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
     <h2>Available Notes (Student)</h2>
@@ -9,19 +100,17 @@
     <!-- Filter Form -->
     <form method="GET" action="{{ url_for('view_notes') }}">
         <label>Department:</label>
-        <input type="text" name="department" value="{{ request.args.get('department','') }}">
+        <input type="text" name="department" value="{{ request.args.get('department','') }}" placeholder="e.g. CSE">
 
         <label>Year:</label>
-        <input type="number" name="year" value="{{ request.args.get('year','') }}">
+        <input type="number" name="year" value="{{ request.args.get('year','') }}" placeholder="e.g. 2">
 
         <button type="submit">Filter</button>
         <a href="{{ url_for('view_notes') }}">Reset</a>
     </form>
 
-    <br>
-
     <!-- Notes Table -->
-    <table border="1" cellpadding="8">
+    <table>
         <tr>
             <th>Subject</th>
             <th>Department</th>
@@ -39,7 +128,7 @@
             <td>{{ note['title'] }}</td>
             <td>{{ note['uploaded_by'] }}</td>
             <td>{{ note['uploaded_on'] }}</td>
-            <td><a href="{{ url_for('download_note', filename=note['filename']) }}">Download</a></td>
+            <td><a class="download-link" href="{{ url_for('download_note', filename=note['filename']) }}">Download</a></td>
         </tr>
         {% endfor %}
     </table>
