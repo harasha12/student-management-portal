@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Error</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="page-fade-in">
+  <div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="login-box text-center">
+      <h2>QR Error</h2>
+      <div class="alert alert-danger">{{ message }}</div>
+      <a href="{{ url_for('others') }}" class="btn btn-gradient">Back to Others</a>
+    </div>
+  </div>
+</body>
+</html>
