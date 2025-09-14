@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Outsider Registration</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="page-fade-in">
+  <div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="login-box" style="max-width: 500px;">
+      <h2 class="text-center">Outsider Registration</h2>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="alert alert-{{ category }} mb-2">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label">Student ID</label>
+          <input type="text" name="student_id" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Username</label>
+          <input type="text" name="username" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" name="confirm_password" class="form-control" required>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Branch</label>
+          <input type="text" name="branch" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-gradient w-100">Register</button>
+      </form>
+
+      <div class="text-center mt-3">
+        <a href="{{ url_for('others') }}" class="text-light">Back</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
