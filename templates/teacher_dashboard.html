@@ -7,42 +7,108 @@
     <title>Dashboard - Student Management System</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* Sticky Navigation Bar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: linear-gradient(90deg, #1e3c72, #2a5298); /* gradient blue */
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Nav items in a row */
+        .navbar-nav {
+            flex-direction: row;
+        }
+
+        /* Each nav item */
+        .navbar-nav .nav-item {
+            margin: 0 8px;
+        }
+
+        /* Nav links style */
+        .navbar-nav .nav-link {
+            color: #fff !important;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        /* Hover effect */
+        .navbar-nav .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* Active link style */
+        .navbar-nav .nav-link.active {
+            background: #ffc107;
+            color: #000 !important;
+            font-weight: bold;
+        }
+
+        /* Logout button highlight */
+        .navbar-nav .nav-link.text-danger {
+            background: #dc3545;
+            border-radius: 20px;
+            padding: 8px 14px;
+        }
+
+        .navbar-nav .nav-link.text-danger:hover {
+            background: #b52a37;
+            color: #fff !important;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="container fade-in">
+    <!-- ================= NAVIGATION BAR ================= -->
+    <nav class="navbar navbar-dark shadow">
+        <div class="container-fluid">
+            <a class="navbar-brand font-weight-bold text-warning" href="#">🎓 Student Management</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item"><a class="nav-link active" href="{{ url_for('add_student') }}">➕ Add Student</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('view_students') }}">📋 View Students</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('mark_attendance') }}">📝 Mark Attendance</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('view_attendance') }}">📅 View Attendance</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('download_attendance_excel') }}">⬇ Download Attendance</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('internal_marks') }}">🎓 Mark Internal</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('view_internal_marks') }}">📖 View Marks</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('send_message') }}">✉ Send Message</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('inbox') }}">📥 Inbox</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('upload_notes') }}">📂 Upload Notes</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('view_notes') }}">📖 View Notes</a></li>
+                <li class="nav-item"><a class="nav-link text-danger" href="{{ url_for('logout') }}">🚪 Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+    <!-- ================= NAVIGATION BAR END ================= -->
+
+    <!-- ================= DASHBOARD CONTENT ================= -->
+    <div class="container fade-in mt-5">
         <div class="container shadow p-4 rounded bg-white text-center">
-            <h2>🎉  Welcome, {{ user }}!</h2>
-            <p class="mt-3">Choose an action below:</p>
-            <div class="mt-4">
-    <a href="{{ url_for('add_student') }}" class="btn btn-primary m-2">➕ Add Student</a>
-<a href="{{ url_for('view_students') }}" class="btn btn-success m-2">📋 View Students</a>
-<a href="{{ url_for('mark_attendance') }}" class="btn btn-warning m-2">📝 Mark Attendance</a>
-<a href="{{ url_for('view_attendance') }}" class="btn btn-info m-2">📅 View Attendance</a>
-<a href="{{ url_for('download_attendance_excel') }}" class="btn btn-outline-info m-2">⬇️ Download Attendance (Excel)
-</a>
-<a href="{{ url_for('internal_marks') }}" class="btn btn-secondary m-2">🎓 Mark internal_marks</a>
-<a href="{{ url_for('view_internal_marks') }}" class="btn btn-dark m-2">📖 View internal marks</a>
-<a href="{{ url_for('send_message') }}" class="btn btn-outline-primary m-2">✉️ Send Message</a>
-<a href="{{ url_for('inbox') }}" class="btn btn-outline-success m-2">📥 Inbox</a>
-<a href="{{ url_for('upload_notes') }}" class="btn btn-outline-warning m-2">📂 Upload Notes</a>
-<a href="{{ url_for('view_notes') }}" class="btn btn-outline-dark m-2">📖 View Notes</a>
+           <h2 class="text-center">👨‍🏫 Welcome, {{ teacher_username }}</h2>
 
-<a href="{{ url_for('logout') }}" class="btn btn-danger m-2">🚪 Logout</a>
 
-</div>
-<a href="{{ url_for('custom_attendance_percentage') }}" 
-   class="btn btn-lg btn-gradient w-100 my-3 shadow-sm">
-    🗓️ View Attendance % (Custom Date Range)
-</a>
-<h3>Bulk Upload</h3>
-<ul>
-    <li><a href="{{ url_for('upload_file', datatype='students') }}">Upload Students</a></li>
-    <li><a href="{{ url_for('upload_file', datatype='marks') }}">Upload Marks</a></li>
-    <li><a href="{{ url_for('upload_file', datatype='attendance') }}">Upload Attendance</a></li>
-</ul>
 
-            </div>
+            <p class="mt-3">Use the navigation bar above to manage students, attendance, marks, and more.</p>
+
+            <!-- Special Button -->
+            <a href="{{ url_for('custom_attendance_percentage') }}" 
+               class="btn btn-lg btn-gradient w-100 my-3 shadow-sm">
+                 View Attendance % (Custom Date Range)
+            </a>
+
+            <!-- Bulk Upload Section -->
+            <h3>📤 Bulk Upload</h3>
+            <ul class="list-unstyled">
+                <li><a href="{{ url_for('upload_file', datatype='students') }}">👩‍🎓 Upload Students</a></li>
+                <li><a href="{{ url_for('upload_file', datatype='marks') }}">📊 Upload Marks</a></li>
+                <li><a href="{{ url_for('upload_file', datatype='attendance') }}">🗓 Upload Attendance</a></li>
+            </ul>
         </div>
     </div>
 
