@@ -10,6 +10,25 @@
 <div class="container d-flex justify-content-center align-items-center min-vh-100">
     <div class="card shadow p-4" style="width: 400px;">
         <h2 class="text-center mb-4">📝 {{ role.capitalize() }} Registration</h2>
+        <div class="mb-3">
+    <label for="password" class="form-label">🔐 Password:</label>
+    <input type="password" class="form-control" id="password" name="password"
+           placeholder="Enter password" required oninput="checkPassword()">
+    <div id="passwordMsg" class="form-text text-danger"></div>
+</div>
+
+<script>
+function checkPassword() {
+    const pwd = document.getElementById("password").value;
+    const msg = document.getElementById("passwordMsg");
+    if (pwd.length < 8) {
+        msg.textContent = "Password must contain at least 8 characters";
+    } else {
+        msg.textContent = "";
+    }
+}
+</script>
+
 
         <form method="POST">
             <!-- Username (editable now) -->
