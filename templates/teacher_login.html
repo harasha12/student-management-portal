@@ -9,11 +9,11 @@
 </head>
 <body class="bg-light">
 <div class="container d-flex justify-content-center align-items-center min-vh-100">
-    <div class="card shadow p-4" style="width: 400px;">
-        <h2 class="text-center mb-4">👩‍🏫 Teacher Login</h2>
+    <div class="card shadow p-4 position-relative" style="width: 400px;">
+        <h2 class="text-center mb-4">👩‍🏫 Faculty Login</h2>
         <form method="POST">
             <div class="mb-3">
-                <label for="usernamed" class="form-label">👤 Username\UserId:</label>
+                <label for="usernamed" class="form-label">👤 Username/UserId:</label>
                 <input type="text" class="form-control" name="username" required>
             </div>
             <div class="mb-3">
@@ -28,14 +28,18 @@
         {% endif %}
 
         <div class="mt-3 text-center">
-            <a href="{{ url_for('choose_login') }}">⬅️ Back</a>
             <span>Not registered?</span> 
-            <a href="{{ url_for('register', role='teacher') }}">Register Here</a>
+            <a href="{{ url_for('register', role='teacher') }}" class="btn btn-outline-success btn-sm ms-2">Register Here</a>
         </div>
 
-        <!-- ✅ Forgot Password link moved to bottom inside the card -->
+        <!-- ✅ Forgot Password link moved below Register -->
         <div class="mt-2 text-center">
-            <a href="{{ url_for('forgot_password') }}" style="color: #007bff;">Forgot Password?</a>
+            <a href="{{ url_for('forgot_password') }}" class="btn btn-outline-warning btn-sm">Forgot Password?</a>
+        </div>
+
+        <!-- Back button at bottom-left -->
+        <div class="position-absolute" style="bottom: 10px; left: 15px;">
+            <a href="{{ url_for('choose_login') }}" class="btn btn-secondary btn-sm">⬅ Back</a>
         </div>
 
     </div>
