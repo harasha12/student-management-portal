@@ -206,6 +206,7 @@ def register_student():
             error = "Please provide both username and password."
         else:
             error = validate_password(password)
+            
 
         if not error:
             db = get_db()
@@ -250,6 +251,7 @@ def register_teacher():
             error = "Please provide both username and password."
         else:
             error = validate_password(password)
+            
 
         if not error:
             db = get_db()
@@ -538,19 +540,42 @@ def add_student():
 
 
 
-@app.route('/students')
+@app.route('/students', methods=['GET'])
 def view_students():
     if 'username' not in session:
         return redirect('/')
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
+
     try:
-        cursor.execute("SELECT * FROM students")
+        # Get filter params from query string
+        year = request.args.get('year')
+        branch = request.args.get('branch')
+
+        query = "SELECT * FROM students WHERE 1=1"
+        params = []
+
+        if year and year.strip() != "":
+            query += " AND year = %s"
+            params.append(year)
+
+        if branch and branch.strip() != "":
+            query += " AND course = %s"
+            params.append(branch)
+
+        cursor.execute(query, tuple(params))
         students = cursor.fetchall()
-        return render_template('view_students.html', students=students)
+
+        return render_template(
+            'view_students.html',
+            students=students,
+            selected_year=year,
+            selected_branch=branch
+        )
     finally:
         cursor.close()
+
 
 @app.route('/edit_student/<int:id>', methods=['GET', 'POST'])
 def edit_student(id):
@@ -745,7 +770,6 @@ def view_attendance():
                                selected_date=selected_date)
     finally:
         cursor.close()
-
 
 @app.route('/student_view_attendance')
 def student_view_attendance():
@@ -1086,7 +1110,7 @@ def internal_marks():
 
 
 @app.route('/enter_internal_marks', methods=['GET', 'POST'])
-def enter_internal_marks():
+def enter_grade():
     if 'username' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
 
@@ -1117,7 +1141,6 @@ def enter_internal_marks():
         return render_template('enter_internal_marks.html', students=students)
     finally:
         cursor.close()
-
 
 
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
@@ -1320,31 +1343,37 @@ def send_message():
 
 
 
-
-
 @app.route('/inbox')
 def inbox():
-    if 'user' not in session:
+    print("DEBUG SESSION:", dict(session))   # 🔍 Debug line
+
+    if 'user' not in session and 'username' not in session:
         return redirect(url_for('choose_login'))
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    username = session['user']
     role = session.get('role')
 
     if role == 'teacher':
-        # Show only messages sent by students
-        cursor.execute("SELECT * FROM messages WHERE receiver = %s AND sender_role = 'student' ORDER BY timestamp DESC", (username,))
+        username = session.get('username')   # teacher session
+        cursor.execute(
+            "SELECT * FROM messages WHERE receiver = %s AND sender_role = 'student' ORDER BY timestamp DESC",
+            (username,)
+        )
     elif role == 'student':
-        # Show only messages sent by teachers
-        cursor.execute("SELECT * FROM messages WHERE receiver = %s AND sender_role = 'teacher' ORDER BY timestamp DESC", (username,))
+        username = session.get('user')       # student session
+        cursor.execute(
+            "SELECT * FROM messages WHERE receiver = %s AND sender_role = 'teacher' ORDER BY timestamp DESC",
+            (username,)
+        )
     else:
         return redirect(url_for('choose_login'))
 
     messages = cursor.fetchall()
     cursor.close()
     return render_template('inbox.html', messages=messages)
+
 
 import csv
 import io
@@ -1509,15 +1538,14 @@ def upload_file(datatype):
                             raw_username, name, branch = [str(col).strip() for col in row[:3]]
                             student_id = raw_username.replace("_", "")
                             email = f"{student_id.lower()}@gmail.com"
-                            default_pw = generate_password_hash(student_id)
 
                             cursor.execute(
                                 """
-                                INSERT INTO users (username, email, role,password)
-                                VALUES (%s, %s, 'student',%s)
+                                INSERT INTO users (username, email, role)
+                                VALUES (%s, %s, 'student')
                                 ON DUPLICATE KEY UPDATE email = VALUES(email), role = VALUES(role)
                                 """,
-                                (student_id, email,default_pw)
+                                (student_id, email,)
                             )
 
                             cursor.execute(
@@ -1747,9 +1775,14 @@ def upload_notes():
 # --- View Notes (for Students) ---
 @app.route('/view_notes')
 def view_notes():
-    if 'role' not in session or session['role'] != 'student':
-        flash("⚠ Please login as a student first.", "danger")
+    if 'role' not in session:
+        flash("⚠ Please login first.", "danger")
         return redirect(url_for('choose_login'))
+
+    # 🔹 Allow both student & faculty
+    # if session['role'] not in ['student', 'faculty']:
+    #     flash("⚠ Access denied.", "danger")
+    #     return redirect(url_for('dashboard'))
 
     dept = request.args.get('department', '').strip()
     year = request.args.get('year', '').strip()
@@ -1784,7 +1817,8 @@ def view_notes():
         cur.close()
 
     return render_template('view_notes.html', notes=notes)
-    # --- imports you may need ---
+
+# --- imports you may need ---
 import os, uuid, qrcode, io
 from datetime import datetime, timedelta
 from flask import (
@@ -1943,7 +1977,6 @@ def outsider_dashboard():
 def notes_file(filename):
     # Assumes UPLOAD_FOLDER points to 'static/uploads'
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
-
 
 # Root
 # ---------------------
