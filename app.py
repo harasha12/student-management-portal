@@ -1883,7 +1883,6 @@ def register_qr(token):
         return render_template('qr_error.html', message="This QR has expired.")
 
     if request.method == 'POST':
-        student_id = request.form.get('student_id', '').strip()
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         confirm  = request.form.get('confirm_password', '')
@@ -1891,7 +1890,7 @@ def register_qr(token):
         branch   = request.form.get('branch', '').strip()
 
         # Basic validation
-        if not all([student_id, username, password, confirm, email, branch]):
+        if not all([username, password, confirm, email, branch]):
             flash("All fields are required.", "danger")
             return redirect(url_for('register_qr', token=token))
         if password != confirm:
@@ -1904,14 +1903,13 @@ def register_qr(token):
             flash("Username already taken. Choose another.", "danger")
             return redirect(url_for('register_qr', token=token))
 
-        # Atomic single-use: mark token used only if insert succeeds
+        # Insert outsider
         try:
             hashed = generate_password_hash(password)
-            # Store outsider in users with role='outsider'
             cur.execute("""
-                INSERT INTO users (student_id, username, password, email, branch, role)
-                VALUES (%s, %s, %s, %s, %s, 'outsider')
-            """, (student_id, username, hashed, email, branch))
+                INSERT INTO users (username, password, email, branch, role)
+                VALUES (%s, %s, %s, %s, 'outsider')
+            """, (username, hashed, email, branch))
             db.commit()
 
             # Mark token used
@@ -1920,6 +1918,7 @@ def register_qr(token):
 
             flash("Registration successful! Please login as Outsider.", "success")
             return redirect(url_for('outsider_login'))
+
         except Exception as e:
             db.rollback()
             flash(f"Registration failed: {e}", "danger")
