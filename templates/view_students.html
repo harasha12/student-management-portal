@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Students List</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* Container */
         .student-list-box {
             max-width: 1100px;
             margin: 30px auto;
@@ -14,97 +14,41 @@
             border-radius: 12px;
             box-shadow: 0px 6px 16px rgba(0,0,0,0.1);
         }
-
         h2 {
             text-align: center;
             margin-bottom: 25px;
             font-size: 26px;
             color: #2c3e50;
         }
-
-        /* Filter Form */
-        .filter-form {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 25px;
-            padding: 15px;
-            background: #f7f9fc;
-            border-radius: 10px;
-        }
-
-        .filter-form label {
-            font-weight: 600;
-            margin-right: 5px;
-            color: #34495e;
-        }
-
-        .filter-form select {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-            background: #fff;
-        }
-
-        .filter-form button,
-        .filter-form .btn {
-            padding: 8px 16px;
-            background: #3498db;
-            border: none;
-            color: white;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.3s ease;
-            text-decoration: none;
-        }
-
-        .filter-form button:hover,
-        .filter-form .btn:hover {
-            background: #2c80b4;
-        }
-
-        /* Table */
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
         }
-
         table th, table td {
             border: 1px solid #ddd;
             padding: 12px;
             text-align: center;
         }
-
         table th {
             background: #3498db;
             color: white;
             font-size: 15px;
         }
-
         table tr:nth-child(even) {
             background: #f9f9f9;
         }
-
         table tr:hover {
             background: #f1f7ff;
         }
-
-        /* Buttons inside table */
         table a {
             color: #3498db;
             font-weight: 600;
             text-decoration: none;
         }
-
         table a:hover {
             text-decoration: underline;
         }
-
-        /* Back Button */
         .btn-back {
             display: inline-block;
             margin-top: 20px;
@@ -116,91 +60,63 @@
             text-decoration: none;
             transition: 0.3s;
         }
-
         .btn-back:hover {
             background: #27ae60;
         }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            .filter-form {
-                flex-direction: column;
-                align-items: center;
-            }
-
             table th, table td {
                 font-size: 13px;
                 padding: 8px;
             }
         }
+        .text-center {
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container student-list-box">
-        <h2><span class="emoji">📋</span> Students List</h2>
+        <h2>📋 Students Assigned to You</h2>
 
-        <!-- ✅ Filter Form -->
-        <form method="get" action="{{ url_for('view_students') }}" class="filter-form">
-            <label for="year">Select Year:</label>
-            <select name="year" id="year">
-                <option value="">All Years</option>
-                <option value="1/4" {% if selected_year == "1/4" %}selected{% endif %}>1/4</option>
-                <option value="2/4" {% if selected_year == "2/4" %}selected{% endif %}>2/4</option>
-                <option value="3/4" {% if selected_year == "3/4" %}selected{% endif %}>3/4</option>
-                <option value="4/4" {% if selected_year == "4/4" %}selected{% endif %}>4/4</option>
-            </select>
-
-            <label for="branch">Select Branch:</label>
-            <select name="branch" id="branch">
-                <option value="">All Branches</option>
-                <option value="B.Tech - CSE" {% if selected_branch == "B.Tech - CSE" %}selected{% endif %}>B.Tech - CSE</option>
-                <option value="B.Tech - IT" {% if selected_branch == "B.Tech - IT" %}selected{% endif %}>B.Tech - IT</option>
-                <option value="B.Tech - Civil" {% if selected_branch == "B.Tech - Civil" %}selected{% endif %}>B.Tech - Civil</option>
-                <option value="B.Tech - Mech" {% if selected_branch == "B.Tech - Mech" %}selected{% endif %}>B.Tech - Mech</option>
-                <option value="B.Tech - EEE" {% if selected_branch == "B.Tech - EEE" %}selected{% endif %}>B.Tech - EEE</option>
-                <option value="B.Tech - ECE" {% if selected_branch == "B.Tech - ECE" %}selected{% endif %}>B.Tech - ECE</option>
-                <option value="B.Tech - CSC" {% if selected_branch == "B.Tech - CYBER SECURITY" %}selected{% endif %}>B.Tech - CSC</option>
-                <option value="B.Tech - AI & ML" {% if selected_branch == "B.Tech - AI & ML" %}selected{% endif %}>B.Tech - AI & ML</option>
-                <option value="B.Tech - AI & DS" {% if selected_branch == "B.Tech - AI & DS" %}selected{% endif %}>B.Tech - AI & DS</option>
-            </select>
-
-            <button type="submit">Filter</button>
-            <a href="{{ url_for('view_students') }}" class="btn">Clear Filters</a>
-        </form>
-
-        <!-- ✅ Student Table -->
         <table>
-            <tr>
-                <th>Student ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Course</th>
-                <th>Year</th>
-                <th>Enrollment Date</th>
-                {% if session['role'] == 'teacher' %}
-                    <th>Actions</th>
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>branch</th>
+                    <th>Year</th>
+                    <th>Enrollment Date</th>
+                    {% if session['role'] == 'teacher' %}
+                        <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if students %}
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.student_id }}</td>
+                        <td>{{ student.name }}</td>
+                        <td>{{ student.email }}</td>
+                        <td>{{ student.branch }}</td>
+                        <td>{{ student.year }}</td>
+                        <td>{{ student.enrollment_date if student.enrollment_date else 'N/A' }}</td>
+                        {% if session['role'] == 'teacher' %}
+                        <td>
+                            <a href="{{ url_for('edit_student', id=student.id) }}">Edit</a> |
+<a href="{{ url_for('delete_student', id=student.id) }}" onclick="return confirm('Are you sure you want to delete this student?')">Delete</a>
+
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="{{ 7 if session['role'] == 'teacher' else 6 }}" class="text-center">No students assigned to you.</td>
+                    </tr>
                 {% endif %}
-            </tr>
-            {% for student in students %}
-            <tr>
-                <td>{{ student['student_id'] }}</td>
-                <td>{{ student['name'] }}</td>
-                <td>{{ student['email'] }}</td>
-                <td>{{ student['course'] }}</td>
-                <td>{{ student['year'] }}</td>
-                <td>{{ student['enrollment_date'] }}</td>
-                {% if session['role'] == 'teacher' %}
-                <td>
-                    <a href="/edit_student/{{ student['id'] }}">Edit</a> |
-                    <a href="/delete_student/{{ student['id'] }}" onclick="return confirm('Are you sure you want to delete this student?')">Delete</a>
-                </td>
-                {% endif %}
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="7" class="text-center">No students found for selected filters.</td>
-            </tr>
-            {% endfor %}
+            </tbody>
         </table>
 
         <a class="btn-back" href="{{ url_for('teacher_dashboard') }}">⬅️ Back to Dashboard</a>
