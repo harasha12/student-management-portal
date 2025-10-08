@@ -11,15 +11,6 @@ from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 from mysql.connector import Error
-from flask import Flask, send_from_directory
-import os
-
-app = Flask(__name__)
-
-@app.route('/google1234567890abcdef.html')
-def google_verify():
-    return send_from_directory(os.path.join(app.root_path, 'templates'),
-                               'google7b91ba2ee7af8e78.html')
 
 from fpdf import FPDF
 import PyPDF2
@@ -45,6 +36,17 @@ secret_key = binascii.hexlify(key_bytes).decode()  # convert to string
 
 app.secret_key = b'$\xcc\xde\xdc\x1a8*%\xca\xeb~\xd2\x01RZa\xab6\xb9!\xfaI\xd4\x0c'
 app.permanent_session_lifetime = timedelta(minutes=20)
+import os
+
+# 🔹 Upload folder config
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# 🔹 Allowed file extensions
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'pptx', 'txt'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ---------------------
 # MySQL connection
@@ -54,10 +56,10 @@ from flask import g
 def get_db():
     if 'db' not in g:
         g.db = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "metro.proxy.rlwy.net"),
-            port=int(os.getenv("DB_PORT", 12600)),
+            host=os.getenv("DB_HOST", "trolley.proxy.rlwy.net"),
+            port=int(os.getenv("DB_PORT", 41464)),
             user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASS", "XfSjxukNhBBfCBJgIlXUTQVHazTrBfwc"),
+            password=os.getenv("DB_PASS", "IrsCfeeWfNyvgTcrVwpuJjZJNxXlhfdO"),
             database=os.getenv("DB_NAME", "railway"),
             autocommit=False
         )
@@ -385,32 +387,54 @@ def teacher_dashboard():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        username = session['username']  # teacher's username
-        cursor.execute("SELECT * FROM users WHERE username = %s AND role = 'teacher'", (username,))
-        teacher = cursor.fetchone()
+        username = session['username']
 
+        # ✅ Fetch teacher info
+        cursor.execute("SELECT * FROM users WHERE username=%s AND role='teacher'", (username,))
+        teacher = cursor.fetchone()
         if not teacher:
             return "Unauthorized", 403
 
-        # ✅ Fetch all students
-        cursor.execute("SELECT student_id, name, course FROM students")
-        students = cursor.fetchall()
+        # ✅ Fetch assignments grouped by subject, branch, year, day_of_week
+        cursor.execute("""
+            SELECT id, branch, year, day_of_week, subject, period
+            FROM faculty_assignments
+            WHERE teacher_username = %s
+            ORDER BY day_of_week, subject
+        """, (username,))
+        raw_assignments = cursor.fetchall()
 
-        # ✅ Fetch all marks
-        cursor.execute("SELECT * FROM internal_marks")
-        marks = cursor.fetchall()
+        # ✅ Group periods for same branch/year/day/subject
+        grouped_assignments = {}
+        for a in raw_assignments:
+            key = (a['branch'], a['year'], a['day_of_week'], a['subject'])
+            if key not in grouped_assignments:
+                grouped_assignments[key] = {
+                    'id': a['id'],
+                    'branch': a['branch'],
+                    'year': a['year'],
+                    'day_of_week': a['day_of_week'],
+                    'subject': a['subject'],
+                    'periods': []
+                }
+            grouped_assignments[key]['periods'].append(int(a['period']))
 
-        # ✅ Fetch latest attendance records (optional)
-        cursor.execute("SELECT * FROM attendance ORDER BY date DESC LIMIT 20")
-        attendance = cursor.fetchall()
+        # ✅ Prepare final list with sorted periods and display string
+        assignments = []
+        for ga in grouped_assignments.values():
+            ga['periods'] = sorted(ga['periods'])
+            ga['display_period'] = ', '.join(str(p) for p in ga['periods'])
+            assignments.append(ga)
 
-        return render_template('teacher_dashboard.html',
-                               teacher=teacher,
-                               students=students,
-                               marks=marks,
-                               attendance=attendance)
+        return render_template(
+            'teacher_dashboard.html',
+            teacher=teacher,
+            assignments=assignments
+        )
     finally:
         cursor.close()
+        db.close()
+
 
 
 # ---------------- STUDENT DASHBOARD ----------------
@@ -551,39 +575,59 @@ def add_student():
 
 @app.route('/students', methods=['GET'])
 def view_students():
-    if 'username' not in session:
+    if 'username' not in session or session.get('role') != 'teacher':
         return redirect('/')
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
+    teacher_username = session['username']
 
     try:
-        # Get filter params from query string
-        year = request.args.get('year')
-        branch = request.args.get('branch')
+        # 1️⃣ Get teacher's assignments
+        cursor.execute("""
+            SELECT branch, year
+            FROM faculty_assignments
+            WHERE teacher_username = %s
+        """, (teacher_username,))
+        assignments = cursor.fetchall()
 
-        query = "SELECT * FROM students WHERE 1=1"
+        if not assignments:
+            flash("⚠ No students assigned to you yet.", "warning")
+            return render_template("view_students.html", students=[])
+
+        # 2️⃣ Prepare query with flexible matching
+        conditions = []
         params = []
 
-        if year and year.strip() != "":
-            query += " AND year = %s"
-            params.append(year)
+        for a in assignments:
+            # Normalize branch: lowercase, remove hyphens and spaces
+            branch_keyword = a['branch'].lower().replace("-", "").replace(" ", "")
+            year_text = str(a['year'])
 
-        if branch and branch.strip() != "":
-            query += " AND course = %s"
-            params.append(branch)
+            # Use REPLACE in SQL to ignore hyphens/spaces in students.course
+            conditions.append("(REPLACE(REPLACE(LOWER(branch), '-', ''), ' ', '') LIKE %s AND year = %s)")
+            params.append(f"%{branch_keyword}%")
+            params.append(year_text)
 
+        # Combine all conditions with OR
+        query = f"SELECT * FROM students WHERE {' OR '.join(conditions)}"
+        print("✅ Final Query:", query)
+        print("✅ Params:", params)
+
+        # Execute and fetch students
         cursor.execute(query, tuple(params))
         students = cursor.fetchall()
+        print("✅ Students fetched:", students)
 
-        return render_template(
-            'view_students.html',
-            students=students,
-            selected_year=year,
-            selected_branch=branch
-        )
+        return render_template("view_students.html", students=students)
+
+    except Exception as e:
+        print("❌ Error in view_students:", e)
+        flash("Error fetching students.", "danger")
+        return render_template("view_students.html", students=[])
     finally:
         cursor.close()
+        db.close()
 
 
 @app.route('/edit_student/<int:id>', methods=['GET', 'POST'])
@@ -643,8 +687,10 @@ def delete_student(id):
 # ---------------------
 # Attendance
 # ---------------------
-@app.route('/mark_attendance', methods=['GET', 'POST'])
-def mark_attendance():
+from datetime import datetime
+
+@app.route('/mark_attendance/<int:assignment_id>', methods=['GET', 'POST'])
+def mark_attendance(assignment_id):
     if 'username' not in session or session.get('role') != 'teacher':
         return redirect(url_for('choose_login'))
 
@@ -653,79 +699,113 @@ def mark_attendance():
     teacher_username = session['username']
 
     try:
-        # ✅ Fetch ALL students (not only added_by, otherwise empty after Excel uploads)
-        cursor.execute("SELECT student_id, name FROM students")
+        # Fetch assignment details
+        cursor.execute("""
+            SELECT * FROM faculty_assignments
+            WHERE id = %s AND teacher_username = %s
+        """, (assignment_id, teacher_username))
+        assignment = cursor.fetchone()
+
+        if not assignment:
+            flash("❌ Invalid assignment or unauthorized access.", "danger")
+            return redirect(url_for('teacher_dashboard'))
+
+        # Normalize branch for matching students
+        branch_value = assignment['branch'].strip().lower().replace('-', '').replace(' ', '')
+        cursor.execute("""
+            SELECT student_id, name, username
+            FROM students
+            WHERE REPLACE(REPLACE(LOWER(branch), '-', ''), ' ', '') LIKE %s
+            AND year = %s
+        """, (f"%{branch_value}%", str(assignment['year'])))
         students = cursor.fetchall()
 
-        selected_period = None
+        if not students:
+            flash("⚠️ No students found for this branch/year.", "warning")
+
+        # Auto date
+        today_date = datetime.today().strftime('%Y-%m-%d')
+
+        # Periods list (support multiple periods for lab)
+        periods_raw = assignment.get('periods') or assignment.get('period')
+        period_list = sorted([int(p) for p in str(periods_raw).split(',')])
+
+        # Check if this is a lab (more than one period selected)
+        is_lab = len(period_list) > 1
 
         if request.method == 'POST':
-            date = request.form.get('date')
-            selected_period = request.form.get('selected_period')
-
-            if not selected_period or not selected_period.isdigit():
-                return "Error: No period selected or invalid value", 400
-
             for student in students:
                 student_id = student['student_id']
-                remarks = request.form.get(f'remarks_{student_id}', '')
+                username = student['username']
                 status_value = request.form.get(f'status_{student_id}', 'Absent')
+                remarks = request.form.get(f'remarks_{student_id}', '')
 
                 c2 = db.cursor(dictionary=True)
                 try:
-                    # check existing record
-                    c2.execute(
-                        "SELECT * FROM attendance WHERE student_id = %s AND date = %s",
-                        (student_id, date)
-                    )
+                    # Check if attendance already exists for today
+                    c2.execute("""
+                        SELECT * FROM attendance
+                        WHERE student_id = %s AND date = %s
+                    """, (student_id, today_date))
                     existing = c2.fetchone()
 
                     if existing:
-                        update_sql = f"""
-                            UPDATE attendance 
-                            SET period{selected_period} = %s, remarks = %s 
-                            WHERE student_id = %s AND date = %s
-                        """
-                        c2.execute(update_sql, (status_value, remarks, student_id, date))
-                        db.commit()
+                        # Update all selected periods
+                        update_fields = ", ".join([f"period{p}=%s" for p in period_list])
+                        update_values = [status_value] * len(period_list)
+                        update_values += [remarks, teacher_username, student_id, today_date]
+
+                        c2.execute(f"""
+                            UPDATE attendance
+                            SET {update_fields}, remarks=%s, teacher_username=%s
+                            WHERE student_id=%s AND date=%s
+                        """, update_values)
                     else:
-                        # create new row with all 6 periods as NULL
-                        period_fields = [None] * 6
-                        period_fields[int(selected_period) - 1] = status_value
-                        c2.execute(
-                            """
-                            INSERT INTO attendance 
-                            (student_id, date, period1, period2, period3, period4, period5, period6, remarks, added_by) 
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                            """,
-                            (
-                                student_id,
-                                date,
-                                period_fields[0],
-                                period_fields[1],
-                                period_fields[2],
-                                period_fields[3],
-                                period_fields[4],
-                                period_fields[5],
-                                remarks,
-                                teacher_username
-                            )
-                        )
-                        db.commit()
+                        # Insert new attendance record
+                        period_fields = [None] * 7
+                        for p in period_list:
+                            period_fields[p - 1] = status_value
+
+                        c2.execute("""
+                            INSERT INTO attendance
+                            (student_id, username, teacher_username, date,
+                             period1, period2, period3, period4, period5, period6, period7,
+                             remarks, added_by, is_lab)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """, (
+                            student_id, username, teacher_username, today_date,
+                            period_fields[0], period_fields[1], period_fields[2],
+                            period_fields[3], period_fields[4], period_fields[5],
+                            period_fields[6], remarks, teacher_username, int(is_lab)
+                        ))
+
+                    db.commit()
                 finally:
                     c2.close()
 
-            return redirect(url_for('view_attendance'))
+            flash("✅ Attendance marked successfully!", "success")
+            return redirect(url_for('teacher_dashboard'))
 
-        return render_template('mark_attendance.html', students=students, selected_period=selected_period)
+        # Render attendance marking page
+        return render_template(
+            'mark_attendance.html',
+            assignment=assignment,
+            students=students,
+            date=today_date,
+            periods=period_list,
+            is_lab=is_lab
+        )
 
     finally:
         cursor.close()
+        db.close()
+
+
 
 
 @app.route('/view_attendance', methods=['GET', 'POST'])
 def view_attendance():
-    if 'username' not in session or session.get('role') != 'teacher':
+    if 'username' not in session or session.get('role') not in ['teacher', 'student']:
         return redirect(url_for('choose_login'))
 
     db = get_db()
@@ -733,9 +813,6 @@ def view_attendance():
 
     try:
         today = datetime.today().date()
-        six_months_ago = today - timedelta(days=180)
-
-        # default date = today
         selected_date = today
 
         if request.method == 'POST':
@@ -746,21 +823,32 @@ def view_attendance():
                 except ValueError:
                     selected_date = today
 
-        # ✅ Fetch only attendance of the selected date (not all)
-        cursor.execute('''
-            SELECT s.student_id, s.name, a.date,
-                   a.period1, a.period2, a.period3, a.period4, a.period5, a.period6, a.remarks
-            FROM attendance a
-            JOIN students s ON a.student_id = s.student_id
-            WHERE a.date = %s
-            ORDER BY a.student_id
-        ''', (selected_date,))
+        # Student view: filter by student_id
+        if session.get('role') == 'student':
+            student_id = session['user']  # must be student_id
+            cursor.execute('''
+                SELECT a.date, a.period1, a.period2, a.period3, a.period4, a.period5, a.period6, a.period7, a.remarks
+                FROM attendance a
+                WHERE a.student_id = %s AND a.date = %s
+                ORDER BY a.date DESC
+            ''', (student_id, selected_date))
+        else:
+            # Teacher view: all students
+            cursor.execute('''
+                SELECT s.student_id, s.name, a.date,
+                       a.period1, a.period2, a.period3, a.period4, a.period5, a.period6, a.period7, a.remarks
+                FROM attendance a
+                JOIN students s ON a.student_id = s.student_id
+                WHERE a.date = %s
+                ORDER BY a.student_id
+            ''', (selected_date,))
+
         records = cursor.fetchall()
 
-        # ✅ Attendance summary only for selected day
+        # Calculate attendance summary
         total_present = total_absent = total_slots = 0
         for row in records:
-            for i in range(1, 7):  # check each period
+            for i in range(1, 8):  # include period7 for lab
                 val = row.get(f'period{i}')
                 if val:
                     total_slots += 1
@@ -779,31 +867,36 @@ def view_attendance():
                                selected_date=selected_date)
     finally:
         cursor.close()
+        db.close()
+
 
 @app.route('/student_view_attendance')
 def student_view_attendance():
-    if 'user' not in session or session['role'] != 'student':
+    if 'user' not in session or session.get('role') != 'student':
         return redirect(url_for('choose_login'))
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        student_id = session['user']  # ✅ username == student_id
+        student_id = session['user']  # ✅ session stores student_id
 
-        # last 6 months filter
-        six_months_ago_str = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+        # Last 6 months filter
+        six_months_ago = datetime.now() - timedelta(days=180)
+        six_months_ago_str = six_months_ago.strftime('%Y-%m-%d')
+
+        # Fetch attendance
         cursor.execute("""
-            SELECT date, period1, period2, period3, period4, period5, period6, remarks
+            SELECT date, period1, period2, period3, period4, period5, period6, period7, remarks
             FROM attendance
             WHERE student_id = %s AND date >= %s
             ORDER BY date DESC
         """, (student_id, six_months_ago_str))
         attendance = cursor.fetchall()
 
-        # Attendance summary
+        # Attendance summary (all periods including period7)
         total_present = total_absent = total_periods = 0
         for rec in attendance:
-            for i in range(1, 7):  # period1 .. period6
+            for i in range(1, 8):  # period1 .. period7
                 status = rec.get(f'period{i}')
                 if status:
                     total_periods += 1
@@ -816,13 +909,14 @@ def student_view_attendance():
 
         return render_template(
             'student_view_attendance.html',
-            attendance=attendance,            # ✅ corrected (was "records")
+            attendance=attendance,
             total_present=total_present,
             total_absent=total_absent,
             attendance_percentage=round(attendance_percentage, 2)
         )
     finally:
         cursor.close()
+        db.close()
 
 import io
 import openpyxl
@@ -1126,7 +1220,15 @@ def enter_grade():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT id, name, student_id FROM students")
+        teacher_username = session['username']
+
+        # ✅ Fetch only students added by this teacher
+        cursor.execute("""
+            SELECT id, name, student_id, branch, year 
+            FROM students 
+            WHERE added_by = %s
+            ORDER BY name
+        """, (teacher_username,))
         students = cursor.fetchall()
 
         if request.method == 'POST':
@@ -1135,14 +1237,20 @@ def enter_grade():
             marks = request.form.get('marks')
             semester = request.form.get('semester')
 
+            if not (student_id and subject and marks and semester):
+                flash("All fields are required!", "danger")
+                return redirect(url_for('enter_grade'))
+
             c2 = db.cursor()
             try:
+                # ✅ Insert marks for selected student only
                 c2.execute(
                     "INSERT INTO internal_marks (student_id, subject, marks, semester, entered_by) "
-                    "VALUES (%s,%s,%s,%s,%s)",
-                    (student_id, subject, marks, semester, session['username'])
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (student_id, subject, marks, semester, teacher_username)
                 )
                 db.commit()
+                flash("Marks entered successfully!", "success")
                 return redirect(url_for('view_internal_marks'))
             finally:
                 c2.close()
@@ -1150,6 +1258,8 @@ def enter_grade():
         return render_template('enter_internal_marks.html', students=students)
     finally:
         cursor.close()
+        db.close()
+
 
 
 @app.route('/view_internal_marks', methods=['GET', 'POST'])
@@ -1826,6 +1936,24 @@ def view_notes():
         cur.close()
 
     return render_template('view_notes.html', notes=notes)
+import os
+from flask import send_from_directory
+
+# Ensure UPLOAD_FOLDER is same as where you saved teacher files
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+
+@app.route('/download_note/<filename>')
+def download_note(filename):
+    try:
+        return send_from_directory(
+            UPLOAD_FOLDER,
+            filename,
+            as_attachment=True
+        )
+    except FileNotFoundError:
+        flash("❌ File not found on server.", "danger")
+        return redirect(url_for('view_notes'))
+
 
 # --- imports you may need ---
 import os, uuid, qrcode, io
@@ -1985,6 +2113,247 @@ def outsider_dashboard():
 def notes_file(filename):
     # Assumes UPLOAD_FOLDER points to 'static/uploads'
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if 'username' in session and session.get('role') == 'admin':
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username').strip()
+        password = request.form.get('password').strip()
+
+        if not username or not password:
+            flash("⚠ Please fill both fields.", "danger")
+            return redirect(url_for('admin_login'))
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT * FROM users WHERE username=%s AND role='admin'", (username,))
+            admin = cursor.fetchone()
+            if admin and admin['password'] == password:  # simple plain-text check, you can hash later
+                session['username'] = username
+                session['role'] = 'admin'
+                return redirect(url_for('admin_dashboard'))
+            else:
+                flash("❌ Invalid username or password.", "danger")
+                return redirect(url_for('admin_login'))
+        finally:
+            cursor.close()
+
+    return render_template('admin_login.html')
+@app.route('/admin_register', methods=['GET', 'POST'])
+def admin_register():
+    if 'username' in session and session.get('role') == 'admin':
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username').strip()
+        password = request.form.get('password').strip()
+        confirm = request.form.get('confirm').strip()
+
+        if not username or not password or not confirm:
+            flash("⚠ All fields are required.", "danger")
+            return redirect(url_for('admin_register'))
+
+        if password != confirm:
+            flash("⚠ Passwords do not match.", "danger")
+            return redirect(url_for('admin_register'))
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            # Check if username already exists
+            cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
+            if cursor.fetchone():
+                flash("⚠ Username already exists.", "danger")
+                return redirect(url_for('admin_register'))
+
+            # Insert new admin
+            cursor.execute(
+                "INSERT INTO users (username, password, role) VALUES (%s, %s, 'admin')",
+                (username, password)
+            )
+            db.commit()
+            flash("✅ Registration successful! Please login.", "success")
+            return redirect(url_for('admin_login'))
+        finally:
+            cursor.close()
+
+    return render_template('admin_register.html')
+
+
+# ---------------- Admin Dashboard ----------------
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    # ✅ Only allow access if user is logged in as admin
+    if 'username' not in session or session.get('role') != 'admin':
+        flash("⚠ Please login as admin first.", "warning")
+        return redirect(url_for('choose_login'))
+    
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin_upload_timetable', methods=['GET', 'POST'])
+def admin_upload_timetable():
+    if 'username' not in session or session.get('role') != 'admin':
+        return redirect(url_for('choose_login'))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # ✅ Fetch teachers for dropdown
+        cursor.execute("SELECT username FROM users WHERE role='teacher'")
+        teachers = cursor.fetchall()
+
+        if request.method == 'POST':
+            teacher_username = request.form.get('teacher_username')
+            branch = request.form.get('branch')
+            year = request.form.get('year')
+            day_of_week = request.form.get('day_of_week')
+            periods = request.form.getlist('periods[]')  # ✅ updated name
+            subject = request.form.get('subject')
+
+            # ✅ Validate inputs
+            if not all([teacher_username, branch, year, day_of_week, periods, subject]):
+                flash("⚠ All fields are required!", "warning")
+                return redirect(url_for('admin_upload_timetable'))
+
+            if len(periods) == 0:
+                flash("⚠ Please select at least one period.", "danger")
+                return redirect(url_for('admin_upload_timetable'))
+
+            # ✅ Auto-detect lab based on multiple period selection
+            is_lab = 1 if len(periods) > 1 else 0
+
+            # ✅ Save each period separately (recommended)
+            try:
+                for period in periods:
+                    cursor.execute("""
+                        INSERT INTO faculty_assignments 
+                        (teacher_username, branch, year, day_of_week, period, subject, is_lab)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (teacher_username, branch, year, day_of_week, period, subject, is_lab))
+                
+                db.commit()
+                flash("✅ Timetable assigned successfully!", "success")
+
+            except Exception as e:
+                db.rollback()
+                flash(f"❌ Database Error: {e}", "danger")
+
+            return redirect(url_for('admin_upload_timetable'))
+
+        return render_template('admin_upload_timetable.html', teachers=teachers)
+
+    finally:
+        cursor.close()
+        db.close()
+
+
+
+from datetime import datetime
+
+from datetime import datetime
+from flask import render_template, session, redirect, url_for
+
+@app.route('/faculty_view_timetable')
+def faculty_view_timetable():
+    if 'username' not in session or session.get('role') != 'teacher':
+        return redirect(url_for('choose_login'))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        teacher_username = session['username']
+        today_day = datetime.today().strftime('%A').strip()  # Example: Monday
+
+        # ✅ Debugging info (you can remove after testing)
+        print("🔎 Logged in teacher:", teacher_username)
+        print("🔎 Today:", today_day)
+
+        # ✅ Fetch today's timetable for this teacher
+        cursor.execute("""
+            SELECT id, period, branch, year, subject
+            FROM faculty_assignments
+            WHERE teacher_username = %s 
+              AND LOWER(day_of_week) = LOWER(%s)
+            ORDER BY period ASC
+        """, (teacher_username, today_day))
+
+        timetable = cursor.fetchall()
+        print("✅ Rows returned:", len(timetable))
+
+        return render_template('faculty_view_timetable.html', timetable=timetable)
+    finally:
+        cursor.close()
+
+
+from datetime import datetime
+
+@app.route('/period_adjustment/<int:assignment_id>', methods=['GET', 'POST'])
+def period_adjustment(assignment_id):
+    if 'username' not in session or session.get('role') != 'teacher':
+        return redirect(url_for('choose_login'))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # ✅ Fetch only assigned period for the logged-in teacher
+        cursor.execute("""
+            SELECT *
+            FROM faculty_assignments
+            WHERE id = %s AND teacher_username = %s
+        """, (assignment_id, session['username']))
+        assignment = cursor.fetchone()
+
+        if not assignment:
+            flash("⚠ Assignment not found or not assigned to you.", "warning")
+            return redirect(url_for('faculty_dashboard'))
+
+        # Extract data
+        original_teacher = assignment['teacher_username']
+        branch = assignment['branch']
+        year = assignment['year']
+        course = assignment['course']
+        day_of_week = assignment['day_of_week']
+        period = assignment['period']
+        date = datetime.today().date()
+
+        if request.method == 'POST':
+            substitute_teacher = session['username']
+            remarks = request.form.get('remarks', '')
+
+            # ✅ Save period adjustment
+            try:
+                cursor.execute("""
+                    INSERT INTO period_adjustments
+                    (original_teacher, substitute_teacher, course, branch, year, day_of_week, period, date, remarks)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (original_teacher, substitute_teacher, course, branch, year, day_of_week, period, date, remarks))
+                db.commit()
+                flash("✅ Period adjustment submitted successfully!", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"❌ Database error: {e}", "danger")
+
+            return redirect(url_for('faculty_dashboard'))
+
+        # ✅ Render adjustment form only for assigned period
+        return render_template(
+            'period_adjustment.html',
+            assignment_id=assignment_id,
+            original_teacher=original_teacher,
+            branch=branch,
+            course=course,
+            year=year,
+            day_of_week=day_of_week,
+            period=period,
+            date=date
+        )
+    finally:
+        cursor.close()
+
+
 
 # Root
 # ---------------------
