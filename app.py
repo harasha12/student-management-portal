@@ -11,6 +11,15 @@ from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 from mysql.connector import Error
+from flask import Flask, send_from_directory
+import os
+
+app = Flask(__name__)
+
+@app.route('/google1234567890abcdef.html')
+def google_verify():
+    return send_from_directory(os.path.join(app.root_path, 'templates'),
+                               'google7b91ba2ee7af8e78.html')
 
 from fpdf import FPDF
 import PyPDF2
